@@ -1,0 +1,1005 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Вабрянка — 200 трас</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#1a1a2e}
+#map{width:100vw;height:100vh}
+.panel{position:absolute;top:10px;left:10px;z-index:1000;background:rgba(20,20,35,0.96);color:#ddd;padding:12px 14px;border-radius:10px;width:360px;max-height:calc(100vh - 20px);overflow-y:auto;font-size:12px;box-shadow:0 4px 24px rgba(0,0,0,0.6);border:1px solid rgba(255,255,255,0.08)}
+.panel::-webkit-scrollbar{width:4px}.panel::-webkit-scrollbar-thumb{background:#555;border-radius:2px}
+.panel h2{font-size:15px;margin-bottom:4px;color:#fff}
+.panel .sub{font-size:10px;color:#777;margin-bottom:8px}
+
+.tabs{display:flex;gap:2px;margin:8px 0;background:rgba(255,255,255,0.04);border-radius:6px;padding:3px}
+.tab-btn{flex:1;padding:6px 4px;border:none;border-radius:4px;font-size:10px;font-weight:600;cursor:pointer;background:transparent;color:#888;transition:all .2s}
+.tab-btn.active{background:rgba(100,170,255,0.2);color:#6af}
+.tab-content{display:none}.tab-content.active{display:block}
+
+.mode-switch{display:flex;gap:4px;margin:6px 0;padding:3px;background:rgba(255,255,255,0.04);border-radius:6px}
+.mode-btn{flex:1;padding:5px 8px;border:none;border-radius:4px;font-size:10px;cursor:pointer;background:transparent;color:#888;transition:all .2s}
+.mode-btn.active{background:rgba(100,170,255,0.2);color:#6af}
+
+.slope-legend{display:flex;gap:2px;margin:6px 0;align-items:center;font-size:10px}
+.slope-legend .bar{height:10px;flex:1;border-radius:2px}
+.slope-legend span{color:#888;padding:0 3px}
+
+.layer-controls{display:flex;gap:8px;margin:6px 0;padding:5px 8px;background:rgba(255,255,255,0.04);border-radius:6px}
+.layer-controls label{font-size:10px;cursor:pointer;display:flex;align-items:center;gap:3px}
+
+.group-header{display:flex;align-items:center;gap:6px;margin:10px 0 4px;padding:6px 8px;background:rgba(255,255,255,0.06);border-radius:6px;cursor:pointer;user-select:none}
+.group-header:hover{background:rgba(255,255,255,0.1)}
+.group-header .dot{width:12px;height:12px;border-radius:50%;flex-shrink:0}
+.group-header .label{font-size:12px;font-weight:600;color:#eee;flex:1}
+.group-header .count{font-size:10px;color:#888}
+.group-header .toggle-all{font-size:10px;color:#6af;cursor:pointer;padding:2px 6px;border-radius:3px}
+.group-header .toggle-all:hover{background:rgba(100,170,255,0.15)}
+
+.trail-item{display:flex;align-items:flex-start;gap:8px;padding:4px 8px 4px 20px;border-radius:4px;cursor:pointer;transition:background .15s}
+.trail-item:hover{background:rgba(255,255,255,0.05)}
+.trail-item input{margin-top:3px;flex-shrink:0;accent-color:#6af}
+.trail-item .info{flex:1}
+.trail-item .tname{font-size:11px;font-weight:600;color:#ccc}
+.trail-item .meta{font-size:10px;color:#888;margin-top:1px}
+.trail-item .desc{font-size:10px;color:#555;margin-top:1px;font-style:italic}
+.trail-item.dimmed .tname{color:#555!important}.trail-item.dimmed .meta{color:#444}
+
+/* Slope filter tab */
+.slope-category{margin:8px 0;padding:8px 10px;border-radius:8px;background:rgba(255,255,255,0.04)}
+.slope-cat-header{display:flex;align-items:center;gap:8px;cursor:pointer;user-select:none}
+.slope-cat-header .swatch{width:20px;height:20px;border-radius:4px;flex-shrink:0}
+.slope-cat-header .slabel{flex:1;font-size:12px;font-weight:600}
+.slope-cat-header .scount{font-size:10px;color:#888}
+.slope-cat-toggle{font-size:10px;color:#6af;cursor:pointer;padding:2px 6px;border-radius:3px}
+.slope-cat-toggle:hover{background:rgba(100,170,255,0.15)}
+.slope-stats{font-size:10px;color:#777;margin-top:4px;padding-left:28px}
+.slope-stats b{color:#aaa}
+
+.info-box{position:absolute;bottom:10px;left:10px;z-index:1000;background:rgba(20,20,35,0.96);color:#ddd;padding:10px 14px;border-radius:8px;font-size:11px;max-width:400px;border:1px solid rgba(255,255,255,0.08)}
+.info-box b{color:#fff}
+.popup-content{font-size:12px;line-height:1.5}.popup-content b{display:block;font-size:13px;margin-bottom:3px}
+</style>
+</head>
+<body>
+<div id="map"></div>
+<div class="panel">
+  <h2>200 оптимізованих трас</h2>
+  <div class="sub">Колір кожного сегменту = ухил. Дві вкладки для різних способів перегляду.</div>
+
+  <div class="tabs">
+    <button class="tab-btn active" data-tab="fallline">Fall Line</button>
+    <button class="tab-btn" data-tab="trails">Траси</button>
+    <button class="tab-btn" data-tab="slopes">Сегменти</button>
+    <button class="tab-btn" data-tab="ideal">Ідеальна 120м</button>
+    <button class="tab-btn" data-tab="yaremche">Яремче</button>
+  </div>
+
+  <!-- TAB 1: TRAILS -->
+  <div class="tab-content" id="tab-trails">
+    <div class="mode-switch">
+      <button class="mode-btn active" id="mode-slope">За ухилом</button>
+      <button class="mode-btn" id="mode-group">За групою</button>
+    </div>
+    <div class="slope-legend" id="slope-legend">
+      <span>0%</span>
+      <div class="bar" style="background:#22cc22"></div><span>15</span>
+      <div class="bar" style="background:#0066ff"></div><span>25</span>
+      <div class="bar" style="background:#cc0000"></div><span>40</span>
+      <div class="bar" style="background:#222"></div><span>%</span>
+    </div>
+    <div class="layer-controls">
+      <label><input type="checkbox" id="tgl-contours" checked> Горизонталі</label>
+      <label><input type="checkbox" id="tgl-zones" checked> Зони</label>
+      <label><input type="checkbox" id="tgl-lift" checked> Витяг</label>
+    </div>
+    <div id="groups-container"></div>
+  </div>
+
+  <!-- TAB 2: SLOPE SEGMENTS -->
+  <div class="tab-content" id="tab-slopes">
+    <div class="slope-legend" style="display:flex">
+      <span>0%</span>
+      <div class="bar" style="background:#22cc22"></div><span>15</span>
+      <div class="bar" style="background:#0066ff"></div><span>25</span>
+      <div class="bar" style="background:#cc0000"></div><span>40</span>
+      <div class="bar" style="background:#222"></div><span>%</span>
+    </div>
+    <p style="font-size:10px;color:#888;margin:6px 0">Вмикай/вимикай сегменти за категорією ухилу. Бачиш де на схилі які ухили.</p>
+    <div id="slope-categories"></div>
+  </div>
+
+  <!-- TAB 3: IDEAL TRAIL -->
+  <div class="tab-content" id="tab-ideal">
+    <div style="background:rgba(255,50,150,0.1);border:1px solid rgba(255,50,150,0.3);border-radius:8px;padding:10px;margin:8px 0">
+      <div style="font-size:13px;font-weight:700;color:#ff69b4;margin-bottom:6px">ІДЕАЛЬНА ТРАСА 120м</div>
+      <div style="font-size:10px;color:#ccc;line-height:1.6">
+        Побудована на основі аналізу <b>3 084</b> зелених та синіх сегментів (ухил 0–25%) з усіх 200 трас.<br><br>
+        Алгоритм знайшов найкращий <b>120м широкий</b> коридор від верхньої до нижньої станції де концентрація пологих ділянок максимальна.
+      </div>
+    </div>
+
+    <div style="background:rgba(255,50,150,0.08);border-left:3px solid #ff69b4;padding:8px 10px;margin:6px 0;border-radius:0 6px 6px 0">
+      <div style="font-size:11px;font-weight:700;color:#ff69b4">Зелений+Синій (0–25%)</div>
+      <div id="ideal-stats" style="font-size:10px;color:#ccc;line-height:1.6;margin-top:3px"></div>
+      <div id="ideal-slope-bar" style="margin:4px 0;border-radius:2px;overflow:hidden;display:flex;height:8px"></div>
+    </div>
+
+    <div style="background:rgba(0,100,255,0.08);border-left:3px solid #0066ff;padding:8px 10px;margin:6px 0;border-radius:0 6px 6px 0">
+      <div style="font-size:11px;font-weight:700;color:#4499ff">Синій (15–25%)</div>
+      <div id="ideal-blue-stats" style="font-size:10px;color:#ccc;line-height:1.6;margin-top:3px"></div>
+      <div id="ideal-blue-bar" style="margin:4px 0;border-radius:2px;overflow:hidden;display:flex;height:8px"></div>
+    </div>
+
+    <div class="slope-legend" style="display:flex;margin-top:6px">
+      <span>0%</span>
+      <div class="bar" style="background:#22cc22"></div><span>15</span>
+      <div class="bar" style="background:#0066ff"></div><span>25</span>
+      <div class="bar" style="background:#cc0000"></div><span>40</span>
+      <div class="bar" style="background:#222"></div><span>%</span>
+    </div>
+    <div style="margin-top:8px;padding:8px;background:rgba(255,255,255,0.04);border-radius:6px">
+      <div style="font-size:10px;color:#999;margin-bottom:6px;font-weight:600">ЗЕЛЕНИЙ+СИНІЙ КОРИДОР</div>
+      <label style="font-size:10px;cursor:pointer;display:flex;align-items:center;gap:5px">
+        <input type="checkbox" id="tgl-corridor" checked style="accent-color:#ff69b4"> Коридор 120м (рожевий)
+      </label>
+      <label style="font-size:10px;cursor:pointer;display:flex;align-items:center;gap:5px;margin-top:3px">
+        <input type="checkbox" id="tgl-centerline" checked style="accent-color:#ff69b4"> Центральна лінія
+      </label>
+      <label style="font-size:10px;cursor:pointer;display:flex;align-items:center;gap:5px;margin-top:3px">
+        <input type="checkbox" id="tgl-ideal-slope" checked style="accent-color:#ff69b4"> Сегменти за ухилом
+      </label>
+      <div style="font-size:10px;color:#999;margin:8px 0 6px;font-weight:600">СИНІЙ КОРИДОР</div>
+      <label style="font-size:10px;cursor:pointer;display:flex;align-items:center;gap:5px">
+        <input type="checkbox" id="tgl-blue-corridor" checked style="accent-color:#4499ff"> Коридор 120м (синій)
+      </label>
+      <label style="font-size:10px;cursor:pointer;display:flex;align-items:center;gap:5px;margin-top:3px">
+        <input type="checkbox" id="tgl-blue-centerline" checked style="accent-color:#4499ff"> Центральна лінія
+      </label>
+      <label style="font-size:10px;cursor:pointer;display:flex;align-items:center;gap:5px;margin-top:3px">
+        <input type="checkbox" id="tgl-blue-slope" checked style="accent-color:#4499ff"> Сегменти за ухилом
+      </label>
+
+      <div style="font-size:10px;color:#999;margin:8px 0 6px;font-weight:600">🚡 НОВИЙ ВИТЯГ</div>
+      <label style="font-size:10px;cursor:pointer;display:flex;align-items:center;gap:5px">
+        <input type="checkbox" id="tgl-new-lift-ideal" checked style="accent-color:#00cc88"> Витяг (зелена лінія)
+      </label>
+
+      <div style="font-size:10px;color:#999;margin:8px 0 6px;font-weight:600">🔵 ЛЕГКА СИНЯ №1 (120м)</div>
+      <div id="easy-stats" style="font-size:10px;color:#ccc;line-height:1.6;margin:2px 0"></div>
+      <div id="easy-slope-bar" style="margin:3px 0;border-radius:2px;overflow:hidden;display:flex;height:8px"></div>
+      <label style="font-size:10px;cursor:pointer;display:flex;align-items:center;gap:5px;margin-top:3px">
+        <input type="checkbox" id="tgl-easy-corridor" checked style="accent-color:#4499ff"> Коридор 120м
+      </label>
+      <label style="font-size:10px;cursor:pointer;display:flex;align-items:center;gap:5px;margin-top:3px">
+        <input type="checkbox" id="tgl-easy-center" checked style="accent-color:#4499ff"> Центральна лінія
+      </label>
+      <label style="font-size:10px;cursor:pointer;display:flex;align-items:center;gap:5px;margin-top:3px">
+        <input type="checkbox" id="tgl-easy-slope" checked style="accent-color:#4499ff"> Сегменти за ухилом
+      </label>
+
+      <div style="font-size:10px;color:#999;margin:8px 0 6px;font-weight:600">🔵 ЛЕГКА СИНЯ №2 (120м)</div>
+      <div id="hard-stats" style="font-size:10px;color:#ccc;line-height:1.6;margin:2px 0"></div>
+      <div id="hard-slope-bar" style="margin:3px 0;border-radius:2px;overflow:hidden;display:flex;height:8px"></div>
+      <label style="font-size:10px;cursor:pointer;display:flex;align-items:center;gap:5px;margin-top:3px">
+        <input type="checkbox" id="tgl-hard-corridor" checked style="accent-color:#2266dd"> Коридор 120м
+      </label>
+      <label style="font-size:10px;cursor:pointer;display:flex;align-items:center;gap:5px;margin-top:3px">
+        <input type="checkbox" id="tgl-hard-center" checked style="accent-color:#2266dd"> Центральна лінія
+      </label>
+      <label style="font-size:10px;cursor:pointer;display:flex;align-items:center;gap:5px;margin-top:3px">
+        <input type="checkbox" id="tgl-hard-slope" checked style="accent-color:#2266dd"> Сегменти за ухилом
+      </label>
+    </div>
+  </div>
+
+  <!-- TAB 5: YAREMCHE -->
+  <div class="tab-content" id="tab-yaremche">
+    <div style="background:rgba(255,165,0,0.12);border:1px solid rgba(255,165,0,0.4);border-radius:8px;padding:10px;margin:8px 0">
+      <div style="font-size:13px;font-weight:700;color:#ffaa00;margin-bottom:6px">ЯРЕМЧЕ — 7 fall lines</div>
+      <div style="font-size:10px;color:#ccc;line-height:1.6">
+        Нова локація <b>~5.3 км</b> від Вабрянки. Ліфт <b>811м</b>.<br>
+        <span style="color:#ff6644">⚠ Захід:</span> обрив 60-120%, серпантин пом'якшує<br>
+        <span style="color:#44aaff">★ Схід:</span> 16-17% avg, до найнижчої 577м<br>
+        Ширина <b>40м</b>.
+      </div>
+    </div>
+    <div id="yr-variants-list"></div>
+
+    <!-- ШЛЯХ SECTION -->
+    <div style="background:rgba(255,215,0,0.12);border:1px solid rgba(255,215,0,0.4);border-radius:8px;padding:10px;margin:12px 0 8px">
+      <div style="font-size:13px;font-weight:700;color:#ffd700;margin-bottom:6px">ШЛЯХ — міст + бетонна полка</div>
+      <div style="font-size:10px;color:#ccc;line-height:1.6">
+        Ручна траса від верхньої до нижньої станції.<br>
+        🧱 <b>Бетонна полка</b> — 2 ділянки на скалі (ухил 31-62%)<br>
+        🌉 <b>Міст</b> — перехід через річку (540-545м)
+      </div>
+    </div>
+    <div id="shlyah-stats" style="font-size:10px;color:#ccc;line-height:1.6;margin:4px 0"></div>
+    <div id="shlyah-slope-bar" style="margin:4px 0;border-radius:2px;overflow:hidden;display:flex;height:10px"></div>
+    <div style="margin-top:6px;padding:8px;background:rgba(255,255,255,0.04);border-radius:6px">
+      <label style="font-size:10px;cursor:pointer;display:flex;align-items:center;gap:5px">
+        <input type="checkbox" id="tgl-shlyah-corridor" checked style="accent-color:#ffd700"> Коридор 40м
+      </label>
+      <label style="font-size:10px;cursor:pointer;display:flex;align-items:center;gap:5px;margin-top:3px">
+        <input type="checkbox" id="tgl-shlyah-segments" checked style="accent-color:#ffd700"> Сегменти за ухилом
+      </label>
+      <label style="font-size:10px;cursor:pointer;display:flex;align-items:center;gap:5px;margin-top:3px">
+        <input type="checkbox" id="tgl-shlyah-special" checked style="accent-color:#ff4444"> Спецзони (міст/полка)
+      </label>
+      <label style="font-size:10px;cursor:pointer;display:flex;align-items:center;gap:5px;margin-top:3px">
+        <input type="checkbox" id="tgl-shlyah-original" checked style="accent-color:#ffaa00"> Оригінальний шлях (KMZ)
+      </label>
+    </div>
+
+    <div class="slope-legend" style="display:flex;margin-top:6px">
+      <span>0%</span>
+      <div class="bar" style="background:#22cc22"></div><span>15</span>
+      <div class="bar" style="background:#0066ff"></div><span>25</span>
+      <div class="bar" style="background:#cc0000"></div><span>40</span>
+      <div class="bar" style="background:#222"></div><span>%</span>
+    </div>
+    <div style="display:flex;gap:10px;margin-top:4px;font-size:9px;color:#999">
+      <span>🧱 = бетонна полка</span><span>🌉 = міст</span>
+    </div>
+  </div>
+
+  <!-- TAB 4: FALL LINE -->
+  <div class="tab-content active" id="tab-fallline">
+    <div style="background:rgba(255,60,0,0.12);border:1px solid rgba(255,60,0,0.4);border-radius:8px;padding:10px;margin:8px 0">
+      <div style="font-size:13px;font-weight:700;color:#ff4400;margin-bottom:6px">FALL LINE — 19 варіантів</div>
+      <div style="font-size:10px;color:#ccc;line-height:1.6">
+        <span style="color:#00cc88">★ 6 NFL</span> від нового витягу + <span style="color:#ff8800">5 оригінальних</span> + <span style="color:#9933ff">3 схід</span> + <span style="color:#ff44aa">📍 5 Мітка</span><br>
+        Всі фінішують на <b>нижній станції</b>. Ширина <b>40м</b>.
+      </div>
+    </div>
+    <div id="fl-variants-list"></div>
+    <div class="slope-legend" style="display:flex;margin-top:6px">
+      <span>0%</span>
+      <div class="bar" style="background:#22cc22"></div><span>15</span>
+      <div class="bar" style="background:#0066ff"></div><span>25</span>
+      <div class="bar" style="background:#cc0000"></div><span>40</span>
+      <div class="bar" style="background:#222"></div><span>%</span>
+    </div>
+  </div>
+</div>
+
+<div class="info-box">
+  <b>Doppelmayr 6CLD</b> 3200 осіб/год | <b>920м — 1208м</b> (288м) | TR10 Technoalpin
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+const map = L.map('map',{center:[48.4590,24.5002],zoom:15});
+L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',{maxZoom:19}).addTo(map);
+L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png',{opacity:0.25,maxZoom:17}).addTo(map);
+
+const liftLayer=L.layerGroup().addTo(map);
+L.polyline([[48.4530,24.5002],[48.4651,24.5002]],{color:'#ff4444',weight:4,opacity:0.9,dashArray:'12,8'}).bindPopup('<b>Doppelmayr 6CLD</b><br>3200 осіб/год').addTo(liftLayer);
+L.circleMarker([48.4651,24.5002],{radius:8,color:'#ff4444',fillColor:'#fff',fillOpacity:1,weight:3}).bindPopup('<b>Верхня 1208м</b>').addTo(liftLayer);
+L.circleMarker([48.4530,24.5002],{radius:8,color:'#ff4444',fillColor:'#fff',fillOpacity:1,weight:3}).bindPopup('<b>Нижня 920м</b>').addTo(liftLayer);
+
+const zonesLayer=L.layerGroup().addTo(map);
+L.polygon([[48.45456,24.49852],[48.45412,24.49881],[48.45309,24.49948],[48.45284,24.50005],[48.45283,24.50063],[48.45358,24.50095],[48.45471,24.50079],[48.45507,24.50076],[48.45662,24.49926],[48.45658,24.49843]],{color:'#c89020',fillColor:'#c89020',fillOpacity:0.15,weight:2}).addTo(zonesLayer);
+L.polygon([[48.45280,24.49263],[48.45219,24.50760],[48.46648,24.50767],[48.46581,24.49313]],{color:'#00cc00',fillColor:'#00cc00',fillOpacity:0.04,weight:2,dashArray:'6,4'}).addTo(zonesLayer);
+
+const contoursLayer=L.layerGroup().addTo(map);
+fetch('contours_10m.geojson').then(r=>r.json()).then(data=>{
+  data.features.forEach(f=>{
+    const e=f.properties.elevation,maj=e%50===0;
+    f.geometry.coordinates.forEach(lc=>{
+      if(lc.length<2)return;
+      const ll=lc.map(c=>[c[1],c[0]]);
+      if(!ll.some(p=>p[0]>48.452&&p[0]<48.467&&p[1]>24.492&&p[1]<24.508))return;
+      const l=L.polyline(ll,{color:maj?'#9B8B6B':'#7B6B4B',weight:maj?1.5:0.6,opacity:maj?0.5:0.2});
+      if(maj)l.bindTooltip(e+'м',{permanent:false,direction:'center'});
+      contoursLayer.addLayer(l);
+    });
+  });
+});
+
+document.getElementById('tgl-contours').onchange=function(){this.checked?map.addLayer(contoursLayer):map.removeLayer(contoursLayer)};
+document.getElementById('tgl-zones').onchange=function(){this.checked?map.addLayer(zonesLayer):map.removeLayer(zonesLayer)};
+document.getElementById('tgl-lift').onchange=function(){this.checked?map.addLayer(liftLayer):map.removeLayer(liftLayer)};
+
+// === SLOPE COLORS ===
+function slopeColor(s){
+  if(s<5)return'#88dd88';if(s<10)return'#44cc44';if(s<15)return'#22aa22';
+  if(s<20)return'#3399ff';if(s<25)return'#0066ff';
+  if(s<30)return'#ff8800';if(s<35)return'#ee4400';if(s<40)return'#cc0000';
+  if(s<50)return'#440000';return'#000000';
+}
+
+function slopeCatKey(s){
+  if(s<5)return'flat';if(s<15)return'green';if(s<25)return'blue';if(s<40)return'red';return'black';
+}
+
+const slopeCats = {
+  flat:  {label:'Плоский (0–5%)', color:'#88dd88', range:'0–5%'},
+  green: {label:'Зелений (5–15%)', color:'#22aa22', range:'5–15%'},
+  blue:  {label:'Синій (15–25%)', color:'#0066ff', range:'15–25%'},
+  red:   {label:'Червоний (25–40%)', color:'#cc0000', range:'25–40%'},
+  black: {label:'Чорний (40%+)', color:'#222222', range:'40%+'},
+};
+
+const groupConfig={
+  backbone:{label:'BACKBONE',dot:'#0066ff'},
+  red:{label:'ЧЕРВОНА',dot:'#cc0000'},
+  black:{label:'ЧОРНА',dot:'#333'},
+  green:{label:'ЗЕЛЕНА',dot:'#00aa00'},
+  family:{label:'ФЕМІЛІ',dot:'#ffcc00'},
+};
+
+let trailData=[], colorMode='slope';
+
+// Trail layers for tab 1
+let trailLayerGroups={}, trailVisible={};
+// Segment layers for tab 2 — grouped by slope category
+let slopeSegmentLayers={}; // catKey -> L.layerGroup
+let slopeCatVisible={};    // catKey -> bool
+let slopeSegmentCounts={}; // catKey -> {count, totalLength}
+
+// Init slope segment layer groups BEFORE fetch
+Object.keys(slopeCats).forEach(k=>{
+  slopeSegmentLayers[k]=L.layerGroup();
+  slopeCatVisible[k]=false;
+  slopeSegmentCounts[k]={count:0,len:0};
+});
+
+fetch('trail_variants.json').then(r=>r.json()).then(data=>{
+  trailData=data;
+  initTab1();
+  initTab2();
+  initTab3();
+  initTab4();
+  initTabYaremche();
+  initShlyah();
+  setupTabs();
+  // Fall Line is active tab by default — show its layers after data loads
+  setTimeout(showFallLineTab, 500);
+});
+
+// ========================
+// TAB 1: TRAILS
+// ========================
+function initTab1(){
+  trailData.forEach(t=>{
+    const lg=L.layerGroup();
+    trailLayerGroups[t.name]=lg;
+    trailVisible[t.name]=true;
+    drawTrailTab1(t,lg);
+
+    // Also populate slope segment layers for tab2
+    if(t.segments){
+      t.segments.forEach((seg,si)=>{
+        const cat=slopeCatKey(seg.slope);
+        const line=L.polyline([seg.from,seg.to],{
+          color:slopeColor(seg.slope),weight:5,opacity:0.8
+        });
+        line.bindPopup(`<div class="popup-content">
+          <b style="color:${slopeColor(seg.slope)}">${t.name} — сегм.${si+1}</b>
+          Ухил: <b>${seg.slope}%</b> (${slopeCats[cat].range})<br>
+          ${seg.elev_from}м → ${seg.elev_to}м<br>
+          Траса: ${t.length}м | ${t.cat}
+        </div>`);
+        slopeSegmentLayers[cat].addLayer(line);
+        slopeSegmentCounts[cat].count++;
+        const dx=(seg.to[1]-seg.from[1])*73700,dy=(seg.to[0]-seg.from[0])*111320;
+        slopeSegmentCounts[cat].len+=Math.sqrt(dx*dx+dy*dy);
+      });
+    }
+  });
+
+  buildTrailsUI();
+}
+
+function drawTrailTab1(t,lg){
+  lg.clearLayers();
+  if(colorMode==='slope'&&t.segments){
+    t.segments.forEach((seg,i)=>{
+      const c=slopeColor(seg.slope);
+      const line=L.polyline([seg.from,seg.to],{color:c,weight:5,opacity:trailVisible[t.name]?0.85:0.08});
+      line.bindPopup(`<div class="popup-content"><b style="color:${c}">${t.name}</b>Сегм.${i+1}: <b>${seg.slope}%</b><br>${seg.elev_from}→${seg.elev_to}м<br>Траса: ${t.length}м | ${t.avg_slope}% сер.</div>`);
+      line.on('mouseover',function(){this.setStyle({weight:8,opacity:1})});
+      line.on('mouseout',function(){this.setStyle({weight:5,opacity:trailVisible[t.name]?0.85:0.08})});
+      lg.addLayer(line);
+    });
+  } else {
+    const line=L.polyline(t.coords,{color:t.color,weight:4,opacity:trailVisible[t.name]?0.7:0.08,dashArray:t.group==='family'?'8,6':null});
+    line.bindPopup(`<div class="popup-content"><b style="color:${t.color}">${t.name}</b>${t.cat}<br>${t.desc}<br><br>${t.length}м | ${t.avg_slope}% | макс ${t.max_slope}% | ${t.width}м</div>`);
+    line.on('mouseover',function(){this.setStyle({weight:7,opacity:1})});
+    line.on('mouseout',function(){this.setStyle({weight:4,opacity:trailVisible[t.name]?0.7:0.08})});
+    lg.addLayer(line);
+  }
+}
+
+function buildTrailsUI(){
+  const container=document.getElementById('groups-container');
+  const groups={};
+  trailData.forEach(t=>{if(!groups[t.group])groups[t.group]=[];groups[t.group].push(t)});
+  for(const[gk,gts]of Object.entries(groups)){
+    const cfg=groupConfig[gk];
+    const hdr=document.createElement('div');hdr.className='group-header';
+    hdr.innerHTML=`<div class="dot" style="background:${cfg.dot}"></div><div class="label">${cfg.label}</div><div class="count">${gts.length}</div><div class="toggle-all">вкл/викл</div>`;
+    container.appendChild(hdr);
+    hdr.querySelector('.toggle-all').onclick=e=>{
+      e.stopPropagation();const allOn=gts.every(t=>trailVisible[t.name]);
+      gts.forEach(t=>{trailVisible[t.name]=!allOn;drawTrailTab1(t,trailLayerGroups[t.name]);
+        const cb=document.getElementById('cb-'+CSS.escape(t.name));if(cb)cb.checked=!allOn;
+        const it=document.getElementById('it-'+CSS.escape(t.name));if(it)it.classList.toggle('dimmed',allOn);
+      });
+    };
+    gts.forEach(t=>{
+      const item=document.createElement('div');item.className='trail-item';item.id='it-'+t.name;
+      const slopeBar=t.segments?t.segments.map(s=>`<span style="display:inline-block;width:${Math.max(2,100/t.segments.length)}%;height:6px;background:${slopeColor(s.slope)}"></span>`).join(''):'';
+      item.innerHTML=`<input type="checkbox" id="cb-${t.name}" checked><div class="info"><div class="tname" style="color:${t.color}">${t.name}</div><div class="meta">${t.length}м | ${t.avg_slope}% (макс ${t.max_slope}%) | ${t.width}м</div><div style="margin-top:2px;border-radius:2px;overflow:hidden;display:flex">${slopeBar}</div><div class="desc">${t.desc}</div></div>`;
+      container.appendChild(item);
+      item.querySelector('input').onchange=function(){trailVisible[t.name]=this.checked;drawTrailTab1(t,trailLayerGroups[t.name]);item.classList.toggle('dimmed',!this.checked)};
+      item.onclick=e=>{if(e.target.tagName!=='INPUT'){const lg=trailLayerGroups[t.name];if(lg){const ls=lg.getLayers();if(ls.length){const b=L.latLngBounds([]);ls.forEach(l=>{if(l.getBounds)b.extend(l.getBounds())});if(b.isValid())map.fitBounds(b,{padding:[100,100]});ls[0].openPopup()}}}};
+    });
+  }
+}
+
+document.getElementById('mode-slope').onclick=function(){colorMode='slope';this.classList.add('active');document.getElementById('mode-group').classList.remove('active');document.getElementById('slope-legend').style.display='flex';trailData.forEach(t=>drawTrailTab1(t,trailLayerGroups[t.name]))};
+document.getElementById('mode-group').onclick=function(){colorMode='group';this.classList.add('active');document.getElementById('mode-slope').classList.remove('active');document.getElementById('slope-legend').style.display='none';trailData.forEach(t=>drawTrailTab1(t,trailLayerGroups[t.name]))};
+
+// ========================
+// TAB 2: SLOPE SEGMENTS
+// ========================
+let tab2Active=false;
+
+function initTab2(){
+  const container=document.getElementById('slope-categories');
+
+  Object.entries(slopeCats).forEach(([key,cat])=>{
+    const stats=slopeSegmentCounts[key];
+    const div=document.createElement('div');div.className='slope-category';
+    div.innerHTML=`
+      <div class="slope-cat-header">
+        <div class="swatch" style="background:${cat.color};border:2px solid rgba(255,255,255,0.2)"></div>
+        <div class="slabel" style="color:${cat.color==='#222222'?'#aaa':cat.color}">${cat.label}</div>
+        <div class="scount">${stats.count} сегм.</div>
+        <div class="slope-cat-toggle" data-cat="${key}">вкл/викл</div>
+      </div>
+      <div class="slope-stats">
+        <b>${stats.count}</b> сегментів | <b>${(stats.len/1000).toFixed(1)} км</b> загальна довжина
+      </div>
+    `;
+    container.appendChild(div);
+
+    slopeCatVisible[key]=false; // start hidden, show on tab switch
+
+    div.querySelector('.slope-cat-toggle').onclick=e=>{
+      e.stopPropagation();
+      slopeCatVisible[key]=!slopeCatVisible[key];
+      if(slopeCatVisible[key]){
+        map.addLayer(slopeSegmentLayers[key]);
+        div.style.opacity='1';
+      } else {
+        map.removeLayer(slopeSegmentLayers[key]);
+        div.style.opacity='0.5';
+      }
+    };
+  });
+}
+
+// ========================
+// TAB 3: IDEAL TRAIL
+// ========================
+let idealData=null, idealCorridorLayer=null, idealCenterLayer=null, idealSlopeLayer=null;
+let idealBlueData=null, idealBlueCorrLayer=null, idealBlueCenterLayer=null, idealBlueSlopeLayer=null;
+
+function initTab3(){
+  fetch('ideal_trail.json').then(r=>r.json()).then(data=>{
+    idealData=data;
+    document.getElementById('ideal-stats').innerHTML=
+      '<b>Довжина:</b> '+data.length+'м | <b>Перепад:</b> '+data.top+'м → '+data.bot+'м ('+data.drop+'м)<br>'+
+      '<b>Сер. ухил:</b> '+data.avg_slope+'% | <b>Макс:</b> '+data.max_slope+'% | <b>Ширина:</b> '+data.width+'м<br>'+
+      '<b>Площа:</b> '+(data.length*data.width/10000).toFixed(1)+' га';
+    const bar=document.getElementById('ideal-slope-bar');
+    if(data.segments) bar.innerHTML=data.segments.map(s=>'<span style="display:inline-block;flex:1;height:10px;background:'+slopeColor(s.slope)+'"></span>').join('');
+    idealCorridorLayer=L.polygon(data.polygon,{color:'#ff69b4',fillColor:'#ff69b4',fillOpacity:0.25,weight:2,dashArray:'6,4'});
+    idealCorridorLayer.bindPopup('<b style="color:#ff69b4">Коридор ідеальної траси</b><br>Ширина: '+data.width+'м | Площа: '+(data.length*data.width/10000).toFixed(1)+' га');
+    idealCenterLayer=L.polyline(data.centerline,{color:'#ff69b4',weight:4,opacity:0.9});
+    idealCenterLayer.bindPopup('<b style="color:#ff69b4">Центральна лінія</b><br>'+data.length+'м | '+data.avg_slope+'% сер. | '+data.max_slope+'% макс');
+    idealSlopeLayer=L.layerGroup();
+    if(data.segments){
+      data.segments.forEach((seg,i)=>{
+        const c=slopeColor(seg.slope);
+        const line=L.polyline([seg.from,seg.to],{color:c,weight:6,opacity:0.9});
+        line.bindPopup('<b style="color:'+c+'">Ідеальна — сегм.'+(i+1)+'</b><br>Ухил: <b>'+seg.slope+'%</b><br>'+seg.elev_from+'м → '+seg.elev_to+'м');
+        idealSlopeLayer.addLayer(line);
+      });
+    }
+    document.getElementById('tgl-corridor').onchange=function(){this.checked?map.addLayer(idealCorridorLayer):map.removeLayer(idealCorridorLayer)};
+    document.getElementById('tgl-centerline').onchange=function(){this.checked?map.addLayer(idealCenterLayer):map.removeLayer(idealCenterLayer)};
+    document.getElementById('tgl-ideal-slope').onchange=function(){this.checked?map.addLayer(idealSlopeLayer):map.removeLayer(idealSlopeLayer)};
+  });
+  fetch('ideal_blue.json').then(r=>r.json()).then(bdata=>{
+    idealBlueData=bdata;
+    document.getElementById('ideal-blue-stats').innerHTML=
+      '<b>'+bdata.source_segments+'</b> синіх сегментів | <b>'+bdata.length+'м</b> | '+bdata.top+'→'+bdata.bot+'м | ухил <b>'+bdata.avg_slope+'%</b> (макс '+bdata.max_slope+'%)';
+    const bar=document.getElementById('ideal-blue-bar');
+    if(bdata.segments) bar.innerHTML=bdata.segments.map(s=>'<span style="display:inline-block;flex:1;height:8px;background:'+slopeColor(s.slope)+'"></span>').join('');
+    idealBlueCorrLayer=L.polygon(bdata.polygon,{color:'#4499ff',fillColor:'#4499ff',fillOpacity:0.2,weight:2,dashArray:'6,4'});
+    idealBlueCorrLayer.bindPopup('<b style="color:#4499ff">Синій коридор 120м</b><br>На базі '+bdata.source_segments+' синіх сегментів');
+    idealBlueCenterLayer=L.polyline(bdata.centerline,{color:'#4499ff',weight:4,opacity:0.9});
+    idealBlueCenterLayer.bindPopup('<b style="color:#4499ff">Синій центр</b><br>'+bdata.length+'м | '+bdata.avg_slope+'%');
+    idealBlueSlopeLayer=L.layerGroup();
+    if(bdata.segments){
+      bdata.segments.forEach((seg,i)=>{
+        const c=slopeColor(seg.slope);
+        const line=L.polyline([seg.from,seg.to],{color:c,weight:6,opacity:0.9});
+        line.bindPopup('<b style="color:'+c+'">Синій ідеал — сегм.'+(i+1)+'</b><br>Ухил: '+seg.slope+'%<br>'+seg.elev_from+'→'+seg.elev_to+'м');
+        idealBlueSlopeLayer.addLayer(line);
+      });
+    }
+    document.getElementById('tgl-blue-corridor').onchange=function(){this.checked?map.addLayer(idealBlueCorrLayer):map.removeLayer(idealBlueCorrLayer)};
+    document.getElementById('tgl-blue-centerline').onchange=function(){this.checked?map.addLayer(idealBlueCenterLayer):map.removeLayer(idealBlueCenterLayer)};
+    document.getElementById('tgl-blue-slope').onchange=function(){this.checked?map.addLayer(idealBlueSlopeLayer):map.removeLayer(idealBlueSlopeLayer)};
+  });
+
+  // EASY GREEN TRAIL
+  fetch('ideal_easy.json?v='+Date.now()).then(r=>r.json()).then(edata=>{
+    window._easyData=edata;
+    const sp=edata.slope_profile||[];
+    const g=sp.filter(s=>s<15).length, b=sp.filter(s=>s>=15&&s<25).length;
+    const r=sp.filter(s=>s>=25&&s<40).length, bl=sp.filter(s=>s>=40).length;
+    document.getElementById('easy-stats').innerHTML=
+      '<b>'+edata.length+'м</b> | '+edata.top+'→'+edata.bot+'м ('+edata.drop+'м) | avg <b>'+edata.avg_slope+'%</b> max '+edata.max_slope+'%<br>'+
+      '<span style="color:#22aa22">G'+g+'</span> <span style="color:#4499ff">B'+b+'</span> <span style="color:#cc0000">R'+r+'</span>'+(bl?' <span style="color:#666">K'+bl+'</span>':'')+
+      ' | <b>'+Math.round(g/sp.length*100)+'%</b> зелений';
+    document.getElementById('easy-slope-bar').innerHTML=(edata.segments||[]).map(s=>
+      '<span style="display:inline-block;flex:1;height:8px;background:'+slopeColor(s.slope)+'"></span>').join('');
+
+    window._easyCorridor=L.polygon(edata.polygon,{color:'#4499ff',fillColor:'#4499ff',fillOpacity:0.15,weight:2,dashArray:'6,4'});
+    window._easyCorridor.bindPopup('<b style="color:#4499ff">Легка синя №1</b><br>'+edata.length+'м | '+edata.avg_slope+'% | 120м');
+    window._easyCenter=L.polyline(edata.centerline,{color:'#4499ff',weight:4,opacity:0.9});
+    window._easyCenter.bindPopup('<b style="color:#4499ff">Легка синя №1</b><br>Від нового витягу');
+    window._easySlope=L.layerGroup();
+    (edata.segments||[]).forEach((seg,i)=>{
+      const c=slopeColor(seg.slope);
+      const line=L.polyline([seg.from,seg.to],{color:c,weight:6,opacity:0.9});
+      line.bindPopup('<b style="color:'+c+'">Легка — сегм.'+(i+1)+'</b><br>Ухил: <b>'+seg.slope+'%</b><br>'+seg.elev_from+'→'+seg.elev_to+'м');
+      window._easySlope.addLayer(line);
+    });
+    document.getElementById('tgl-easy-corridor').onchange=function(){this.checked?map.addLayer(window._easyCorridor):map.removeLayer(window._easyCorridor)};
+    document.getElementById('tgl-easy-center').onchange=function(){this.checked?map.addLayer(window._easyCenter):map.removeLayer(window._easyCenter)};
+    document.getElementById('tgl-easy-slope').onchange=function(){this.checked?map.addLayer(window._easySlope):map.removeLayer(window._easySlope)};
+  });
+
+  // HARD RED TRAIL
+  fetch('ideal_hard.json?v='+Date.now()).then(r=>r.json()).then(hdata=>{
+    window._hardData=hdata;
+    const sp=hdata.slope_profile||[];
+    const g=sp.filter(s=>s<15).length, b=sp.filter(s=>s>=15&&s<25).length;
+    const r=sp.filter(s=>s>=25&&s<40).length, bl=sp.filter(s=>s>=40).length;
+    document.getElementById('hard-stats').innerHTML=
+      '<b>'+hdata.length+'м</b> | '+hdata.top+'→'+hdata.bot+'м ('+hdata.drop+'м) | avg <b>'+hdata.avg_slope+'%</b> max '+hdata.max_slope+'%<br>'+
+      '<span style="color:#22aa22">G'+g+'</span> <span style="color:#4499ff">B'+b+'</span> <span style="color:#cc0000">R'+r+'</span>'+(bl?' <span style="color:#666">K'+bl+'</span>':'');
+    document.getElementById('hard-slope-bar').innerHTML=(hdata.segments||[]).map(s=>
+      '<span style="display:inline-block;flex:1;height:8px;background:'+slopeColor(s.slope)+'"></span>').join('');
+
+    window._hardCorridor=L.polygon(hdata.polygon,{color:'#2266dd',fillColor:'#2266dd',fillOpacity:0.15,weight:2,dashArray:'6,4'});
+    window._hardCorridor.bindPopup('<b style="color:#2266dd">Легка синя №2</b><br>'+hdata.length+'м | '+hdata.avg_slope+'% | 120м');
+    window._hardCenter=L.polyline(hdata.centerline,{color:'#2266dd',weight:4,opacity:0.9});
+    window._hardCenter.bindPopup('<b style="color:#2266dd">Легка синя №2</b><br>Від нового витягу');
+    window._hardSlope=L.layerGroup();
+    (hdata.segments||[]).forEach((seg,i)=>{
+      const c=slopeColor(seg.slope);
+      const line=L.polyline([seg.from,seg.to],{color:c,weight:6,opacity:0.9});
+      line.bindPopup('<b style="color:'+c+'">Складна — сегм.'+(i+1)+'</b><br>Ухил: <b>'+seg.slope+'%</b><br>'+seg.elev_from+'→'+seg.elev_to+'м');
+      window._hardSlope.addLayer(line);
+    });
+    document.getElementById('tgl-hard-corridor').onchange=function(){this.checked?map.addLayer(window._hardCorridor):map.removeLayer(window._hardCorridor)};
+    document.getElementById('tgl-hard-center').onchange=function(){this.checked?map.addLayer(window._hardCenter):map.removeLayer(window._hardCenter)};
+    document.getElementById('tgl-hard-slope').onchange=function(){this.checked?map.addLayer(window._hardSlope):map.removeLayer(window._hardSlope)};
+  });
+
+  // NEW LIFT on ideal tab
+  window._idealNewLift=L.layerGroup();
+  const nlTop=[48.465100,24.495459], nlBot=[48.4530,24.5002];
+  L.polyline([nlTop,nlBot],{color:'#00cc88',weight:4,opacity:0.9,dashArray:'12,8'}).bindPopup('<b style="color:#00cc88">Новий витяг</b><br>1200→920м (280м)').addTo(window._idealNewLift);
+  L.circleMarker(nlTop,{radius:8,color:'#00cc88',fillColor:'#fff',fillOpacity:1,weight:3}).bindPopup('<b>Нова верхня 1200м</b>').addTo(window._idealNewLift);
+  L.circleMarker(nlBot,{radius:6,color:'#00cc88',fillColor:'#fff',fillOpacity:1,weight:2}).bindPopup('<b>Нижня 920м</b>').addTo(window._idealNewLift);
+  document.getElementById('tgl-new-lift-ideal').onchange=function(){this.checked?map.addLayer(window._idealNewLift):map.removeLayer(window._idealNewLift)};
+}
+
+function showIdealTab(){
+  trailData.forEach(t=>{if(trailLayerGroups[t.name])map.removeLayer(trailLayerGroups[t.name])});
+  Object.keys(slopeCats).forEach(k=>{map.removeLayer(slopeSegmentLayers[k]);slopeCatVisible[k]=false});
+  if(idealCorridorLayer && document.getElementById('tgl-corridor').checked) map.addLayer(idealCorridorLayer);
+  if(idealCenterLayer && document.getElementById('tgl-centerline').checked) map.addLayer(idealCenterLayer);
+  if(idealSlopeLayer && document.getElementById('tgl-ideal-slope').checked) map.addLayer(idealSlopeLayer);
+  if(idealBlueCorrLayer && document.getElementById('tgl-blue-corridor').checked) map.addLayer(idealBlueCorrLayer);
+  if(idealBlueCenterLayer && document.getElementById('tgl-blue-centerline').checked) map.addLayer(idealBlueCenterLayer);
+  if(idealBlueSlopeLayer && document.getElementById('tgl-blue-slope').checked) map.addLayer(idealBlueSlopeLayer);
+  if(window._easyCorridor && document.getElementById('tgl-easy-corridor').checked) map.addLayer(window._easyCorridor);
+  if(window._easyCenter && document.getElementById('tgl-easy-center').checked) map.addLayer(window._easyCenter);
+  if(window._easySlope && document.getElementById('tgl-easy-slope').checked) map.addLayer(window._easySlope);
+  if(window._hardCorridor && document.getElementById('tgl-hard-corridor').checked) map.addLayer(window._hardCorridor);
+  if(window._hardCenter && document.getElementById('tgl-hard-center').checked) map.addLayer(window._hardCenter);
+  if(window._hardSlope && document.getElementById('tgl-hard-slope').checked) map.addLayer(window._hardSlope);
+  if(window._idealNewLift && document.getElementById('tgl-new-lift-ideal').checked) map.addLayer(window._idealNewLift);
+}
+
+function hideIdealTab(){
+  if(idealCorridorLayer) map.removeLayer(idealCorridorLayer);
+  if(idealCenterLayer) map.removeLayer(idealCenterLayer);
+  if(idealSlopeLayer) map.removeLayer(idealSlopeLayer);
+  if(idealBlueCorrLayer) map.removeLayer(idealBlueCorrLayer);
+  if(idealBlueCenterLayer) map.removeLayer(idealBlueCenterLayer);
+  if(idealBlueSlopeLayer) map.removeLayer(idealBlueSlopeLayer);
+  if(window._easyCorridor) map.removeLayer(window._easyCorridor);
+  if(window._easyCenter) map.removeLayer(window._easyCenter);
+  if(window._easySlope) map.removeLayer(window._easySlope);
+  if(window._hardCorridor) map.removeLayer(window._hardCorridor);
+  if(window._hardCenter) map.removeLayer(window._hardCenter);
+  if(window._hardSlope) map.removeLayer(window._hardSlope);
+  if(window._idealNewLift) map.removeLayer(window._idealNewLift);
+}
+
+// ========================
+// TAB 4: FALL LINE (5 variants)
+// ========================
+const flVariants={};
+const flColors={
+  // NFL = New Fall Line (від нового витягу)
+  nfl_w5:'#003333',nfl_w4:'#004444',nfl_w3:'#005555',nfl_w2:'#006666',nfl_w1:'#007777',
+  nfl_c:'#00cc88',nfl_e1:'#00ddaa',nfl_e2:'#33eebb',nfl_e3:'#66ffcc',
+  // Original fall lines
+  west_far:'#996633',west3:'#cc6600',west2:'#ffaa00',west1:'#ff8800',
+  central:'#ff4400',
+  east2:'#9933ff',east3:'#6644ff',east4:'#4466ff',
+  // Mitka fall lines
+  mitka_e:'#ff44aa',mitka_se:'#ff2288',mitka_s:'#ee0066',mitka_sw:'#cc0055',mitka_w:'#aa0044'
+};
+const flLabels={
+  nfl_w5:'★ NFL -300м',nfl_w4:'★ NFL -200м',nfl_w3:'★ NFL -120м',
+  nfl_w2:'★ NFL -80м',nfl_w1:'★ NFL -40м',
+  nfl_c:'★ NFL Center',nfl_e1:'★ NFL +40м',nfl_e2:'★ NFL +80м',nfl_e3:'★ NFL +120м',
+  west_far:'West-Far',west3:'West-3',west2:'West-2',west1:'West-1',
+  central:'Central',east2:'East-2',east3:'East-3',east4:'East-4',
+  mitka_e:'📍 Мітка E',mitka_se:'📍 Мітка SE',mitka_s:'📍 Мітка S',mitka_sw:'📍 Мітка SW',mitka_w:'📍 Мітка W'
+};
+const flOrder=['nfl_w2','nfl_w1','nfl_c','nfl_e1','nfl_e2','nfl_e3','west_far','west3','west2','west1','central','east2','east3','east4','mitka_e','mitka_se','mitka_s','mitka_sw','mitka_w'];
+
+function initTab4(){
+  fetch('fall_lines.json?v='+Date.now()).then(r=>r.json()).then(allData=>{
+    const listEl=document.getElementById('fl-variants-list');
+
+    // Draw new lift if data exists
+    if(allData._new_lift){
+      const nl=allData._new_lift;
+      const newLiftLayer=L.layerGroup();
+      L.polyline([nl.top,nl.bot],{color:'#00cc88',weight:4,opacity:0.9,dashArray:'12,8'}).bindPopup('<b style="color:#00cc88">Новий витяг</b><br>'+nl.top_elev+'→'+nl.bot_elev+'м ('+( nl.top_elev-nl.bot_elev)+'м)<br>Довжина: '+nl.length+'м').addTo(newLiftLayer);
+      L.circleMarker(nl.top,{radius:8,color:'#00cc88',fillColor:'#fff',fillOpacity:1,weight:3}).bindPopup('<b style="color:#00cc88">Нова верхня '+nl.top_elev+'м</b>').addTo(newLiftLayer);
+      newLiftLayer.addTo(map);
+      // Store for tab switching
+      window._newLiftLayer=newLiftLayer;
+    }
+
+    const sortedKeys=flOrder.filter(k=>allData[k]);
+    // Add any keys not in flOrder (skip _new_lift metadata)
+    Object.keys(allData).forEach(k=>{if(!sortedKeys.includes(k)&&!k.startsWith('_'))sortedKeys.push(k)});
+    sortedKeys.forEach(key=>{
+      const data=allData[key];
+      const color=flColors[key]||'#ff4400';
+      const label=flLabels[key]||key;
+      const sp=data.slope_profile||[];
+      const g=sp.filter(s=>s<15).length, b=sp.filter(s=>s>=15&&s<25).length;
+      const r=sp.filter(s=>s>=25&&s<40).length, bl=sp.filter(s=>s>=40).length;
+
+      // Info card with integrated checkbox
+      const card=document.createElement('div');
+      card.style.cssText='background:rgba(255,255,255,0.04);border-left:3px solid '+color+';padding:8px 10px;margin:5px 0;border-radius:0 6px 6px 0;display:flex;align-items:flex-start;gap:8px';
+      card.innerHTML='<input type="checkbox" id="tgl-fl-'+key+'" checked style="accent-color:'+color+';margin-top:2px;flex-shrink:0;cursor:pointer">'+
+        '<div style="flex:1;cursor:pointer" class="fl-card-info">'+
+        '<div style="font-size:11px;font-weight:700;color:'+color+'">'+label+'</div>'+
+        '<div style="font-size:10px;color:#ccc;line-height:1.5;margin-top:2px">'+
+        '<b>'+data.length+'м</b> | '+data.top+'→'+data.bot+'м ('+data.drop+'м) | ухил <b>'+data.avg_slope+'%</b> (макс '+data.max_slope+'%)<br>'+
+        '<span style="color:#22aa22">G'+g+'</span> <span style="color:#4499ff">B'+b+'</span> <span style="color:#cc0000">R'+r+'</span>'+(bl?' <span style="color:#666">K'+bl+'</span>':'')+
+        '</div>'+
+        '<div style="margin:3px 0;border-radius:2px;overflow:hidden;display:flex;height:8px">'+
+        (data.segments||[]).map(s=>'<span style="display:inline-block;flex:1;height:8px;background:'+slopeColor(s.slope)+'"></span>').join('')+
+        '</div></div>';
+      listEl.appendChild(card);
+
+      // Map layers
+      const layers={visible:true};
+      layers.corridor=L.polygon(data.polygon,{color:color,fillColor:color,fillOpacity:0.15,weight:2,dashArray:'6,4'});
+      layers.corridor.bindPopup('<b style="color:'+color+'">'+label+'</b><br>'+data.length+'м | '+data.avg_slope+'% сер.');
+      layers.center=L.polyline(data.centerline,{color:color,weight:4,opacity:0.9});
+      layers.center.bindPopup('<b style="color:'+color+'">'+label+'</b><br>'+data.length+'м | '+data.drop+'м | '+data.avg_slope+'%');
+      layers.segments=L.layerGroup();
+      (data.segments||[]).forEach((seg,i)=>{
+        const c=slopeColor(seg.slope);
+        const line=L.polyline([seg.from,seg.to],{color:c,weight:6,opacity:0.85});
+        line.bindPopup('<b style="color:'+c+'">'+label+' сегм.'+(i+1)+'</b><br>Ухил: <b>'+seg.slope+'%</b><br>'+seg.elev_from+'→'+seg.elev_to+'м');
+        line.on('mouseover',function(){this.setStyle({weight:9,opacity:1})});
+        line.on('mouseout',function(){this.setStyle({weight:6,opacity:0.85})});
+        layers.segments.addLayer(line);
+      });
+      layers.markers=L.layerGroup();
+      const step=Math.max(1,Math.floor((data.segments||[]).length/6));
+      for(let i=0;i<=(data.segments||[]).length;i+=step){
+        const seg=i<data.segments.length?data.segments[i]:data.segments[data.segments.length-1];
+        const coord=i<data.segments.length?seg.from:seg.to;
+        const elev=i<data.segments.length?seg.elev_from:seg.elev_to;
+        const m=L.circleMarker(coord,{radius:3,color:color,fillColor:'#fff',fillOpacity:1,weight:2});
+        m.bindTooltip(elev+'м',{permanent:true,direction:'right',offset:[5,0]});
+        layers.markers.addLayer(m);
+      }
+      flVariants[key]=layers;
+
+      // Click info area to zoom
+      card.querySelector('.fl-card-info').onclick=()=>{
+        const bounds=layers.corridor.getBounds();
+        if(bounds.isValid()) map.fitBounds(bounds,{padding:[80,80]});
+      };
+
+      // Checkbox toggles visibility
+      const cb=card.querySelector('input[type="checkbox"]');
+      cb.onchange=function(){
+        layers.visible=this.checked;
+        card.style.opacity=this.checked?'1':'0.4';
+        if(this.checked){
+          map.addLayer(layers.corridor);map.addLayer(layers.segments);map.addLayer(layers.markers);
+        } else {
+          map.removeLayer(layers.corridor);map.removeLayer(layers.segments);map.removeLayer(layers.markers);map.removeLayer(layers.center);
+        }
+      };
+    });
+  });
+}
+
+function showFallLineTab(){
+  trailData.forEach(t=>{if(trailLayerGroups[t.name])map.removeLayer(trailLayerGroups[t.name])});
+  Object.keys(slopeCats).forEach(k=>{map.removeLayer(slopeSegmentLayers[k]);slopeCatVisible[k]=false});
+  hideIdealTab();
+  Object.values(flVariants).forEach(l=>{
+    if(l.visible){map.addLayer(l.corridor);map.addLayer(l.segments);map.addLayer(l.markers)}
+  });
+  if(window._newLiftLayer) map.addLayer(window._newLiftLayer);
+}
+
+function hideFallLineTab(){
+  Object.values(flVariants).forEach(l=>{
+    map.removeLayer(l.corridor);map.removeLayer(l.center);map.removeLayer(l.segments);map.removeLayer(l.markers);
+  });
+  if(window._newLiftLayer) map.removeLayer(window._newLiftLayer);
+}
+
+// ========================
+// TAB 5: YAREMCHE
+// ========================
+const yrVariants={};
+let yrLiftLayer=null;
+
+function initTabYaremche(){
+  fetch('yaremche_trails.json?v='+Date.now()).then(r=>r.json()).then(allData=>{
+    const loc=allData.location;
+    const listEl=document.getElementById('yr-variants-list');
+
+    // Draw Yaremche lift
+    yrLiftLayer=L.layerGroup();
+    L.polyline([loc.top, loc.bot],{color:'#ffaa00',weight:4,opacity:0.9,dashArray:'12,8'})
+      .bindPopup('<b style="color:#ffaa00">Яремче витяг</b><br>'+loc.top_elev+'→'+loc.bot_elev+'м ('+( loc.top_elev-loc.bot_elev)+'м)')
+      .addTo(yrLiftLayer);
+    L.circleMarker(loc.top,{radius:8,color:'#ffaa00',fillColor:'#fff',fillOpacity:1,weight:3})
+      .bindPopup('<b>Яремче верхня '+loc.top_elev+'м</b>').addTo(yrLiftLayer);
+    L.circleMarker(loc.bot,{radius:8,color:'#ffaa00',fillColor:'#fff',fillOpacity:1,weight:3})
+      .bindPopup('<b>Яремче нижня '+loc.bot_elev+'м</b>').addTo(yrLiftLayer);
+
+    const yrColors=['#ff6633','#ff9933','#ffcc00','#ff4400','#cc6600','#ff8855','#ffaa77'];
+    let ci=0;
+
+    Object.keys(allData.trails).forEach(key=>{
+      const data=allData.trails[key];
+      const color=yrColors[ci%yrColors.length]; ci++;
+      const sp=data.slope_profile||[];
+      const g=sp.filter(s=>s<15).length, b=sp.filter(s=>s>=15&&s<25).length;
+      const r=sp.filter(s=>s>=25&&s<40).length, bl=sp.filter(s=>s>=40).length;
+
+      const card=document.createElement('div');
+      card.style.cssText='background:rgba(255,255,255,0.04);border-left:3px solid '+color+';padding:8px 10px;margin:5px 0;border-radius:0 6px 6px 0;display:flex;align-items:flex-start;gap:8px';
+      card.innerHTML='<input type="checkbox" id="tgl-yr-'+key+'" checked style="accent-color:'+color+';margin-top:2px;flex-shrink:0;cursor:pointer">'+
+        '<div style="flex:1;cursor:pointer" class="yr-card-info">'+
+        '<div style="font-size:11px;font-weight:700;color:'+color+'">'+data.name+'</div>'+
+        '<div style="font-size:10px;color:#ccc;line-height:1.5;margin-top:2px">'+
+        '<b>'+data.length+'м</b> | '+data.top+'→'+data.bot+'м ('+data.drop+'м) | ухил <b>'+data.avg_slope+'%</b> (макс '+data.max_slope+'%)<br>'+
+        '<span style="color:#22aa22">G'+g+'</span> <span style="color:#4499ff">B'+b+'</span> <span style="color:#cc0000">R'+r+'</span>'+(bl?' <span style="color:#666">K'+bl+'</span>':'')+
+        '</div>'+
+        '<div style="margin:3px 0;border-radius:2px;overflow:hidden;display:flex;height:8px">'+
+        (data.segments||[]).map(s=>'<span style="display:inline-block;flex:1;height:8px;background:'+slopeColor(s.slope)+'"></span>').join('')+
+        '</div></div>';
+      listEl.appendChild(card);
+
+      const layers={visible:true};
+      layers.corridor=L.polygon(data.polygon,{color:color,fillColor:color,fillOpacity:0.15,weight:2,dashArray:'6,4'});
+      layers.corridor.bindPopup('<b style="color:'+color+'">'+data.name+'</b><br>'+data.length+'м | '+data.avg_slope+'%');
+      layers.segments=L.layerGroup();
+      (data.segments||[]).forEach((seg,i)=>{
+        const c=slopeColor(seg.slope);
+        const line=L.polyline([seg.from,seg.to],{color:c,weight:6,opacity:0.85});
+        line.bindPopup('<b style="color:'+c+'">'+data.name+' сегм.'+(i+1)+'</b><br>Ухил: <b>'+seg.slope+'%</b><br>'+seg.elev_from+'→'+seg.elev_to+'м');
+        line.on('mouseover',function(){this.setStyle({weight:9,opacity:1})});
+        line.on('mouseout',function(){this.setStyle({weight:6,opacity:0.85})});
+        layers.segments.addLayer(line);
+      });
+      layers.markers=L.layerGroup();
+      const step=Math.max(1,Math.floor((data.segments||[]).length/6));
+      for(let i=0;i<=(data.segments||[]).length;i+=step){
+        const seg=i<data.segments.length?data.segments[i]:data.segments[data.segments.length-1];
+        const coord=i<data.segments.length?seg.from:seg.to;
+        const elev=i<data.segments.length?seg.elev_from:seg.elev_to;
+        const m=L.circleMarker(coord,{radius:3,color:color,fillColor:'#fff',fillOpacity:1,weight:2});
+        m.bindTooltip(elev+'м',{permanent:true,direction:'right',offset:[5,0]});
+        layers.markers.addLayer(m);
+      }
+      yrVariants[key]=layers;
+
+      card.querySelector('.yr-card-info').onclick=()=>{
+        const bounds=layers.corridor.getBounds();
+        if(bounds.isValid()) map.fitBounds(bounds,{padding:[80,80]});
+      };
+      const cb=card.querySelector('input');
+      cb.onchange=function(){
+        layers.visible=this.checked;
+        card.style.opacity=this.checked?'1':'0.4';
+        if(this.checked){map.addLayer(layers.corridor);map.addLayer(layers.segments);map.addLayer(layers.markers)}
+        else{map.removeLayer(layers.corridor);map.removeLayer(layers.segments);map.removeLayer(layers.markers)}
+      };
+    });
+  });
+}
+
+// Shlyah trail layers
+let shlyahLayers={corridor:null,segments:null,special:null,original:null};
+
+function initShlyah(){
+  fetch('shlyah_trail.json?v='+Date.now()).then(r=>r.json()).then(data=>{
+    // Stats
+    const statsEl=document.getElementById('shlyah-stats');
+    const sp=data.slope_profile||[];
+    const g=sp.filter(s=>s<15).length, b=sp.filter(s=>s>=15&&s<25).length;
+    const r=sp.filter(s=>s>=25&&s<40).length, bl=sp.filter(s=>s>=40).length;
+    statsEl.innerHTML='<b>'+data.length+'м</b> | '+data.top+'→'+data.bot+'м ('+data.drop+'м) | ухил <b>'+data.avg_slope+'%</b> (макс '+data.max_slope+'%)<br>'+
+      '<span style="color:#22aa22">G'+g+'</span> <span style="color:#4499ff">B'+b+'</span> <span style="color:#cc0000">R'+r+'</span>'+(bl?' <span style="color:#666">K'+bl+'</span>':'')+
+      ' | 🧱×'+(data.special_zones||[]).filter(z=>z.type==='cliff_shelf').length+' 🌉×'+(data.special_zones||[]).filter(z=>z.type==='bridge').length;
+
+    // Slope bar
+    const barEl=document.getElementById('shlyah-slope-bar');
+    barEl.innerHTML=(data.segments||[]).map(s=>{
+      let bg=slopeColor(s.slope);
+      if(s.zone==='cliff_shelf') bg='repeating-linear-gradient(45deg,'+slopeColor(s.slope)+','+slopeColor(s.slope)+' 2px,#ffd700 2px,#ffd700 4px)';
+      if(s.zone==='bridge') bg='repeating-linear-gradient(45deg,#00ccff,#00ccff 2px,#0066ff 2px,#0066ff 4px)';
+      return '<span style="display:inline-block;flex:1;height:10px;background:'+bg+'" title="'+s.slope+'% '+(s.zone!=='normal'?s.zone:'')+'"></span>';
+    }).join('');
+
+    // Corridor
+    shlyahLayers.corridor=L.polygon(data.polygon,{color:'#ffd700',fillColor:'#ffd700',fillOpacity:0.2,weight:2,dashArray:'6,4'});
+    shlyahLayers.corridor.bindPopup('<b style="color:#ffd700">Шлях (міст+полка)</b><br>'+data.length+'м | '+data.avg_slope+'%');
+
+    // Segments colored by slope
+    shlyahLayers.segments=L.layerGroup();
+    (data.segments||[]).forEach((seg,i)=>{
+      const c=slopeColor(seg.slope);
+      const w=seg.zone!=='normal'?8:5;
+      const line=L.polyline([seg.from,seg.to],{color:c,weight:w,opacity:0.85});
+      line.bindPopup('<b style="color:'+c+'">Шлях сегм.'+(i+1)+'</b><br>Ухил: <b>'+seg.slope+'%</b><br>'+seg.elev_from+'→'+seg.elev_to+'м'+(seg.zone!=='normal'?'<br><b>'+({cliff_shelf:'🧱 БЕТОННА ПОЛКА',bridge:'🌉 МІСТ'}[seg.zone]||seg.zone)+'</b>':''));
+      line.on('mouseover',function(){this.setStyle({weight:w+3,opacity:1})});
+      line.on('mouseout',function(){this.setStyle({weight:w,opacity:0.85})});
+      shlyahLayers.segments.addLayer(line);
+    });
+
+    // Special zones — highlighted
+    shlyahLayers.special=L.layerGroup();
+    (data.special_zones||[]).forEach(sz=>{
+      const isBridge=sz.type==='bridge';
+      const color=isBridge?'#00ccff':'#ffd700';
+      const icon=isBridge?'🌉':'🧱';
+      const label=isBridge?'МІСТ (річка)':'БЕТОННА ПОЛКА (скала)';
+
+      // Wide highlight
+      const line=L.polyline([sz.from,sz.to],{color:color,weight:14,opacity:0.4});
+      line.bindPopup('<b style="color:'+color+'">'+icon+' '+label+'</b><br>'+sz.elev_from+'→'+sz.elev_to+'м | ухил '+sz.slope+'% | ~'+sz.length+'м');
+      shlyahLayers.special.addLayer(line);
+
+      // Marker
+      const mid=[(sz.from[0]+sz.to[0])/2,(sz.from[1]+sz.to[1])/2];
+      const marker=L.marker(mid,{
+        icon:L.divIcon({className:'',html:'<div style="font-size:16px;text-shadow:0 0 4px rgba(0,0,0,0.8)">'+icon+'</div>',iconSize:[20,20],iconAnchor:[10,10]})
+      });
+      marker.bindPopup('<b>'+icon+' '+label+'</b><br>Ухил: '+sz.slope+'% | Довж: ~'+sz.length+'м');
+      shlyahLayers.special.addLayer(marker);
+    });
+
+    // Original KMZ path
+    shlyahLayers.original=L.polyline(data.original_points,{color:'#ffaa00',weight:3,opacity:0.7,dashArray:'4,6'});
+    shlyahLayers.original.bindPopup('<b style="color:#ffaa00">Оригінальний шлях (KMZ)</b><br>17 точок');
+
+    // Toggles
+    document.getElementById('tgl-shlyah-corridor').onchange=function(){
+      this.checked?map.addLayer(shlyahLayers.corridor):map.removeLayer(shlyahLayers.corridor)};
+    document.getElementById('tgl-shlyah-segments').onchange=function(){
+      this.checked?map.addLayer(shlyahLayers.segments):map.removeLayer(shlyahLayers.segments)};
+    document.getElementById('tgl-shlyah-special').onchange=function(){
+      this.checked?map.addLayer(shlyahLayers.special):map.removeLayer(shlyahLayers.special)};
+    document.getElementById('tgl-shlyah-original').onchange=function(){
+      this.checked?map.addLayer(shlyahLayers.original):map.removeLayer(shlyahLayers.original)};
+  });
+}
+
+function showYaremcheTab(){
+  trailData.forEach(t=>{if(trailLayerGroups[t.name])map.removeLayer(trailLayerGroups[t.name])});
+  Object.keys(slopeCats).forEach(k=>{map.removeLayer(slopeSegmentLayers[k]);slopeCatVisible[k]=false});
+  hideIdealTab(); hideFallLineTab();
+  if(yrLiftLayer) map.addLayer(yrLiftLayer);
+  Object.values(yrVariants).forEach(l=>{
+    if(l.visible){map.addLayer(l.corridor);map.addLayer(l.segments);map.addLayer(l.markers)}
+  });
+  // Show shlyah
+  if(shlyahLayers.corridor && document.getElementById('tgl-shlyah-corridor').checked) map.addLayer(shlyahLayers.corridor);
+  if(shlyahLayers.segments && document.getElementById('tgl-shlyah-segments').checked) map.addLayer(shlyahLayers.segments);
+  if(shlyahLayers.special && document.getElementById('tgl-shlyah-special').checked) map.addLayer(shlyahLayers.special);
+  if(shlyahLayers.original && document.getElementById('tgl-shlyah-original').checked) map.addLayer(shlyahLayers.original);
+  map.setView([48.4305, 24.5497], 15);
+}
+
+function hideYaremcheTab(){
+  if(yrLiftLayer) map.removeLayer(yrLiftLayer);
+  Object.values(yrVariants).forEach(l=>{
+    map.removeLayer(l.corridor);map.removeLayer(l.segments);map.removeLayer(l.markers);
+  });
+  // Hide shlyah
+  Object.values(shlyahLayers).forEach(l=>{if(l) map.removeLayer(l)});
+}
+
+function setupTabs(){
+  document.querySelectorAll('.tab-btn').forEach(btn=>{
+    btn.onclick=()=>{
+      document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+      document.querySelectorAll('.tab-content').forEach(c=>c.classList.remove('active'));
+      btn.classList.add('active');
+      document.getElementById('tab-'+btn.dataset.tab).classList.add('active');
+
+      // Hide everything first
+      hideIdealTab();
+      hideFallLineTab();
+      hideYaremcheTab();
+      trailData.forEach(t=>{if(trailLayerGroups[t.name])map.removeLayer(trailLayerGroups[t.name])});
+      Object.keys(slopeCats).forEach(k=>{map.removeLayer(slopeSegmentLayers[k]);slopeCatVisible[k]=false});
+
+      if(btn.dataset.tab==='yaremche'){
+        tab2Active=false;
+        showYaremcheTab();
+      } else if(btn.dataset.tab==='fallline'){
+        tab2Active=false;
+        showFallLineTab();
+        map.setView([48.4590,24.5002],14);
+      } else if(btn.dataset.tab==='slopes'){
+        tab2Active=true;
+        Object.keys(slopeCats).forEach(k=>{
+          slopeCatVisible[k]=true;
+          map.addLayer(slopeSegmentLayers[k]);
+          const el=document.querySelector('[data-cat="'+k+'"]');
+          if(el)el.closest('.slope-category').style.opacity='1';
+        });
+      } else if(btn.dataset.tab==='ideal'){
+        tab2Active=false;
+        showIdealTab();
+        map.setView([48.4590,24.5002],14);
+      } else {
+        tab2Active=false;
+        map.setView([48.4590,24.5002],14);
+        trailData.forEach(t=>{if(trailLayerGroups[t.name]&&trailVisible[t.name])map.addLayer(trailLayerGroups[t.name])});
+      }
+    };
+  });
+}
+</script>
+</body>
+</html>
