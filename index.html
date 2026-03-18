@@ -63,42 +63,93 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .popup-content{font-size:12px;line-height:1.5}.popup-content b{display:block;font-size:13px;margin-bottom:3px}
 
 /* Mobile toggle button */
-.panel-toggle{display:none;position:absolute;top:10px;left:10px;z-index:1100;background:rgba(20,20,35,0.96);color:#6af;border:1px solid rgba(100,170,255,0.3);border-radius:10px;padding:10px 14px;font-size:13px;font-weight:700;cursor:pointer;box-shadow:0 4px 20px rgba(0,0,0,0.5);backdrop-filter:blur(10px)}
+.panel-toggle{display:none;position:absolute;top:10px;left:10px;z-index:1100;background:rgba(20,20,35,0.96);color:#6af;border:1px solid rgba(100,170,255,0.3);border-radius:12px;padding:12px 16px;font-size:14px;font-weight:700;cursor:pointer;box-shadow:0 4px 20px rgba(0,0,0,0.5);backdrop-filter:blur(10px);-webkit-tap-highlight-color:transparent}
 .panel-toggle:active{transform:scale(0.95)}
-.panel-toggle .icon{font-size:16px;margin-right:6px}
+.panel-toggle .icon{font-size:18px;margin-right:8px}
+
+/* Mobile quick stats bar */
+.mobile-stats{display:none;position:absolute;top:10px;right:10px;z-index:1100;background:rgba(20,20,35,0.92);color:#aaa;border-radius:10px;padding:8px 12px;font-size:11px;line-height:1.5;box-shadow:0 2px 12px rgba(0,0,0,0.4);border:1px solid rgba(255,255,255,0.06)}
+.mobile-stats b{color:#6af}
 
 /* Mobile: panel as bottom sheet */
 @media(max-width:768px){
   .panel-toggle{display:flex;align-items:center}
-  .panel{position:fixed;top:auto;bottom:0;left:0;right:0;width:100%;max-width:100%;border-radius:16px 16px 0 0;max-height:70vh;padding:16px 14px 24px;transform:translateY(100%);transition:transform .3s ease;z-index:1050;border:none;border-top:1px solid rgba(255,255,255,0.1)}
+  .mobile-stats{display:block}
+  .panel{position:fixed;top:auto;bottom:0;left:0;right:0;width:100%;max-width:100%;border-radius:20px 20px 0 0;max-height:75vh;padding:8px 14px 30px;transform:translateY(100%);transition:transform .3s cubic-bezier(.32,.72,.37,1.1);z-index:1050;border:none;border-top:1px solid rgba(255,255,255,0.12)}
   .panel.open{transform:translateY(0)}
-  .panel .drag-handle{display:block;width:40px;height:4px;background:rgba(255,255,255,0.25);border-radius:2px;margin:0 auto 12px}
-  .panel h2{font-size:14px}
-  .panel .sub{font-size:9px;margin-bottom:6px}
-  .tabs{flex-wrap:wrap;gap:3px}
-  .tab-btn{padding:8px 6px;font-size:11px;min-width:0}
-  .info-box{bottom:auto;top:50px;left:10px;right:10px;max-width:none;font-size:10px;padding:8px 10px}
-  .trail-item{padding:6px 8px 6px 12px}
-  .trail-item .tname{font-size:12px}
-  .trail-item .meta{font-size:11px}
-  .slope-category{padding:10px}
-  .slope-cat-header .slabel{font-size:13px}
-  .group-header .label{font-size:13px}
+  .panel .drag-handle{display:block;width:44px;height:5px;background:rgba(255,255,255,0.3);border-radius:3px;margin:4px auto 10px}
+  .panel h2{font-size:16px;text-align:center}
+  .panel .sub{font-size:10px;margin-bottom:8px;text-align:center}
+
+  /* Tabs: scrollable horizontal strip */
+  .tabs{display:flex;flex-wrap:nowrap;gap:4px;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;padding:4px 0;margin:6px -4px 8px}
+  .tabs::-webkit-scrollbar{display:none}
+  .tab-btn{flex:0 0 auto;padding:10px 14px;font-size:12px;font-weight:600;white-space:nowrap;border-radius:8px;min-width:0;-webkit-tap-highlight-color:transparent}
+  .tab-btn.active{background:rgba(100,170,255,0.25);color:#6af}
+
+  /* Bigger touch targets */
+  .trail-item{padding:10px 10px 10px 14px;min-height:48px;-webkit-tap-highlight-color:transparent}
+  .trail-item input[type="checkbox"]{width:22px;height:22px;margin-top:1px}
+  .trail-item .tname{font-size:13px}
+  .trail-item .meta{font-size:11px;line-height:1.4}
+
+  .slope-category{padding:12px;margin:6px 0}
+  .slope-cat-header{min-height:44px}
+  .slope-cat-header .swatch{width:24px;height:24px;border-radius:6px}
+  .slope-cat-header .slabel{font-size:14px}
+  .slope-cat-header .scount{font-size:11px}
+  .slope-cat-toggle{font-size:12px;padding:6px 12px;border-radius:6px}
+
+  .group-header{padding:10px;min-height:48px}
+  .group-header .dot{width:16px;height:16px}
+  .group-header .label{font-size:14px}
+  .group-header .count{font-size:11px}
+  .group-header .toggle-all{font-size:12px;padding:6px 12px}
+
+  .layer-controls{flex-wrap:wrap;gap:10px;padding:8px 10px}
+  .layer-controls label{font-size:12px;gap:5px}
+  .layer-controls input[type="checkbox"]{width:20px;height:20px}
+
+  .mode-switch{gap:4px;padding:4px}
+  .mode-btn{padding:8px 10px;font-size:12px}
+
+  .info-box{bottom:auto;top:56px;left:8px;right:8px;max-width:none;font-size:11px;padding:10px 12px;border-radius:10px}
+
+  /* Popup mobile */
+  .leaflet-popup-content{font-size:13px!important}
+  .leaflet-popup-content-wrapper{border-radius:12px!important}
+
   /* Overlay behind panel */
-  .panel-overlay{display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);z-index:1040}
+  .panel-overlay{display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);z-index:1040;-webkit-tap-highlight-color:transparent}
   .panel-overlay.show{display:block}
+
+  /* Slope bars bigger */
+  .slope-legend .bar{height:14px}
+  .slope-legend span{font-size:11px}
+
+  /* Fall line items */
+  .fall-line-item{min-height:48px}
+  .fall-line-item input[type="checkbox"]{width:22px;height:22px}
 }
+
+/* Tablet */
+@media(min-width:769px) and (max-width:1024px){
+  .panel{width:340px}
+}
+
 @media(min-width:769px){
   .panel{position:absolute!important;top:10px!important;left:10px!important;bottom:auto!important;right:auto!important;width:360px!important;max-width:360px!important;border-radius:10px!important;transform:none!important;transition:none!important;max-height:calc(100vh - 20px)!important;border:1px solid rgba(255,255,255,0.08)!important;padding:12px 14px!important}
   .panel .drag-handle{display:none}
   .panel-overlay{display:none!important}
   .panel-toggle{display:none!important}
+  .mobile-stats{display:none!important}
 }
 </style>
 </head>
 <body>
 <div id="map"></div>
-<button class="panel-toggle" id="panelToggle" onclick="togglePanel()"><span class="icon">🗺️</span> Меню трас</button>
+<button class="panel-toggle" id="panelToggle" onclick="togglePanel()"><span class="icon">⛷</span> Меню трас</button>
+<div class="mobile-stats" id="mobileStats">⛷ <b>200</b> трас | 🏔 <b>1208→920м</b></div>
 <div class="panel-overlay" id="panelOverlay" onclick="togglePanel()"></div>
 <div class="panel" id="panel">
   <div class="drag-handle"></div>
@@ -1054,14 +1105,14 @@ function togglePanel(){
   }
 }
 
-// Swipe down to close on mobile
+// Swipe down to close on mobile (improved)
 (function(){
-  let startY=0,currentY=0,dragging=false;
+  let startY=0,currentY=0,dragging=false,startTime=0;
   const panel=document.getElementById('panel');
   if(!panel)return;
   panel.addEventListener('touchstart',function(e){
     if(panel.scrollTop>5)return;
-    startY=e.touches[0].clientY;dragging=true;
+    startY=e.touches[0].clientY;currentY=startY;dragging=true;startTime=Date.now();
   },{passive:true});
   panel.addEventListener('touchmove',function(e){
     if(!dragging)return;
@@ -1072,10 +1123,21 @@ function togglePanel(){
   panel.addEventListener('touchend',function(){
     if(!dragging)return;dragging=false;
     const dy=currentY-startY;
-    panel.style.transition='transform .3s ease';
-    if(dy>80){togglePanel()}else{panel.style.transform=''}
+    const dt=Date.now()-startTime;
+    const velocity=dy/dt;
+    panel.style.transition='transform .3s cubic-bezier(.32,.72,.37,1.1)';
+    // Close if dragged >60px or fast swipe
+    if(dy>60 || (velocity>0.4 && dy>20)){togglePanel()}else{panel.style.transform='translateY(0)'}
   },{passive:true});
 })();
+
+// Close panel when map is tapped on mobile
+if(window.innerWidth<=768){
+  map.on('click',function(){
+    const panel=document.getElementById('panel');
+    if(panel.classList.contains('open')){togglePanel()}
+  });
+}
 </script>
 </body>
 </html>
