@@ -58,8 +58,11 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .slope-stats{font-size:10px;color:#777;margin-top:4px;padding-left:28px}
 .slope-stats b{color:#aaa}
 
-.info-box{position:absolute;bottom:10px;left:10px;z-index:1000;background:rgba(20,20,35,0.96);color:#ddd;padding:10px 14px;border-radius:8px;font-size:11px;max-width:400px;border:1px solid rgba(255,255,255,0.08)}
+.info-box{position:absolute;bottom:10px;left:10px;z-index:1000;background:rgba(20,20,35,0.96);color:#ddd;padding:10px 14px;border-radius:8px;font-size:11px;max-width:400px;border:1px solid rgba(255,255,255,0.08);display:flex;align-items:center;gap:10px}
 .info-box b{color:#fff}
+.info-box .info-text{flex:1}
+.info-box .close-btn{background:none;border:none;color:#888;font-size:18px;cursor:pointer;padding:0 2px;line-height:1;flex-shrink:0;transition:color .2s}
+.info-box .close-btn:hover{color:#fff}
 .popup-content{font-size:12px;line-height:1.5}.popup-content b{display:block;font-size:13px;margin-bottom:3px}
 
 /* Mobile toggle button */
@@ -80,6 +83,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
   .panel .drag-handle{display:block;width:44px;height:5px;background:rgba(255,255,255,0.3);border-radius:3px;margin:4px auto 10px}
   .panel h2{font-size:16px;text-align:center}
   .panel .sub{font-size:10px;margin-bottom:8px;text-align:center}
+  .panel .panel-close{display:block;position:absolute;top:12px;right:14px;background:rgba(255,255,255,0.1);border:none;color:#aaa;font-size:20px;cursor:pointer;width:32px;height:32px;border-radius:50%;line-height:1;-webkit-tap-highlight-color:transparent}
+  .panel .panel-close:active{background:rgba(255,255,255,0.2);color:#fff}
 
   /* Tabs: scrollable horizontal strip */
   .tabs{display:flex;flex-wrap:nowrap;gap:4px;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;padding:4px 0;margin:6px -4px 8px}
@@ -114,6 +119,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
   .mode-btn{padding:8px 10px;font-size:12px}
 
   .info-box{bottom:auto;top:56px;left:8px;right:8px;max-width:none;font-size:11px;padding:10px 12px;border-radius:10px}
+  .info-box .close-btn{font-size:20px;padding:4px 6px}
 
   /* Popup mobile */
   .leaflet-popup-content{font-size:13px!important}
@@ -140,6 +146,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 @media(min-width:769px){
   .panel{position:absolute!important;top:10px!important;left:10px!important;bottom:auto!important;right:auto!important;width:360px!important;max-width:360px!important;border-radius:10px!important;transform:none!important;transition:none!important;max-height:calc(100vh - 20px)!important;border:1px solid rgba(255,255,255,0.08)!important;padding:12px 14px!important}
   .panel .drag-handle{display:none}
+  .panel .panel-close{display:none}
   .panel-overlay{display:none!important}
   .panel-toggle{display:none!important}
   .mobile-stats{display:none!important}
@@ -153,6 +160,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 <div class="panel-overlay" id="panelOverlay" onclick="togglePanel()"></div>
 <div class="panel" id="panel">
   <div class="drag-handle"></div>
+  <button class="panel-close" onclick="togglePanel()" title="Закрити">✕</button>
   <h2>200 оптимізованих трас</h2>
   <div class="sub">Колір кожного сегменту = ухил. Дві вкладки для різних способів перегляду.</div>
 
@@ -353,8 +361,9 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
   </div>
 </div>
 
-<div class="info-box">
-  <b>Doppelmayr 6CLD</b> 3200 осіб/год | <b>920м — 1208м</b> (288м) | TR10 Technoalpin
+<div class="info-box" id="infoBox">
+  <span class="info-text"><b>Doppelmayr 6CLD</b> 3200 осіб/год | <b>920м — 1208м</b> (288м) | TR10 Technoalpin</span>
+  <button class="close-btn" onclick="document.getElementById('infoBox').style.display='none'" title="Закрити">✕</button>
 </div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
