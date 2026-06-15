@@ -373,6 +373,9 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
       <label><input type="checkbox" id="tgl-parcel-lifts" checked> Підйомники</label>
       <label><input type="checkbox" id="tgl-parcel-elev"> Відмітки висоти</label>
     </div>
+    <div style="font-size:11px;font-weight:700;color:#ff2bd6;margin:8px 0 2px">🚡 Підйомники</div>
+    <div id="parcel-lifts-list"></div>
+    <div style="font-size:11px;font-weight:700;color:#ffcc00;margin:10px 0 2px">⛷ Траси</div>
     <div id="parcel-variants-list"></div>
     <div class="slope-legend" style="display:flex;margin-top:6px">
       <span>0%</span>
@@ -949,6 +952,19 @@ function initParcelTab(){
         const botIcon=L.divIcon({className:'',html:'<div style="'+ring(lf.bot_in_clearing)+'color:#00e5ff;font-size:20px;line-height:14px;text-shadow:0 0 3px #000,0 0 3px #000,0 0 3px #000">▼</div>',iconSize:[20,16],iconAnchor:[10,8]});
         L.marker(lf.top,{icon:topIcon}).bindPopup('<b style="color:#ff2bd6">Верхня станція '+lf.name+'</b><br>'+lf.top_elev+'м · '+lf.runs_served+' трас'+(lf.top_in_clearing?'<br><span style="color:#7fff7f">🟢 на галявині</span>':'')).addTo(parcelBoundary.lifts);
         L.marker(lf.bottom,{icon:botIcon}).bindPopup('<b style="color:#00e5ff">Нижня станція '+lf.name+'</b><br>'+lf.bot_elev+'м'+(lf.bot_in_clearing?'<br><span style="color:#7fff7f">🟢 на галявині</span>':'')).addTo(parcelBoundary.lifts);
+
+        const lc=document.getElementById('parcel-lifts-list');
+        const lcard=document.createElement('div');
+        lcard.style.cssText='background:rgba(255,43,214,0.06);border-left:3px solid #ff2bd6;padding:7px 9px;margin:4px 0;border-radius:0 6px 6px 0';
+        lcard.innerHTML='<div style="font-size:11px;font-weight:700;color:#ff2bd6">'+lf.name+'</div>'+
+          '<div style="font-size:10px;color:#ccc;line-height:1.5;margin-top:2px">'+lf.bot_elev+'→'+lf.top_elev+'м (Δ'+lf.vertical+'м) · '+lf.cable_len+'м · ухил '+lf.grade+'%'+(lf.runs_served?' · '+lf.runs_served+' трас':'')+(lf.n_towers?' · опор '+lf.n_towers+' (проліт '+lf.max_span+'м)':'')+'</div>'+
+          '<div style="margin-top:4px;display:flex;gap:6px">'+
+          '<button class="lf-prev" style="font-size:10px;font-weight:600;color:#ff2bd6;background:rgba(255,43,214,0.14);border:1px solid rgba(255,43,214,0.4);border-radius:5px;padding:3px 8px;cursor:pointer">📈 превю профілю</button>'+
+          '<button class="lf-zoom" style="font-size:10px;font-weight:600;color:#6af;background:rgba(100,170,255,0.12);border:1px solid rgba(100,170,255,0.35);border-radius:5px;padding:3px 8px;cursor:pointer">🗺 на карті</button>'+
+          '</div>';
+        lc.appendChild(lcard);
+        lcard.querySelector('.lf-prev').onclick=()=>showLiftProfile(i);
+        lcard.querySelector('.lf-zoom').onclick=()=>map.fitBounds(L.latLngBounds([lf.bottom,lf.top]),{padding:[70,70]});
       });
     }
     document.getElementById('tgl-parcel-lifts').onchange=function(){
