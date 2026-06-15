@@ -163,6 +163,20 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
     <button class="tab-btn" data-tab="slopes">Сегменти</button>
     <button class="tab-btn" data-tab="ideal">Ідеальна 120м</button>
     <button class="tab-btn" data-tab="yaremche">Яремче</button>
+    <button class="tab-btn" data-tab="pendelbahn">🚡 Пендельбан</button>
+  </div>
+
+  <!-- TAB: PENDELBAHN -->
+  <div class="tab-content" id="tab-pendelbahn">
+    <div style="background:rgba(255,43,214,0.12);border:1px solid rgba(255,43,214,0.4);border-radius:8px;padding:10px;margin:8px 0">
+      <div style="font-size:13px;font-weight:700;color:#ff2bd6;margin-bottom:6px">🚡 Пендельбан Заросляк → Мала Говерла</div>
+      <div style="font-size:10px;color:#ccc;line-height:1.6">
+        Маятникова канатна дорога на масиві <b>Чорногора</b> (окремо від Вабрянки).<br>
+        Заросляк <b>1259м</b> → Мала Говерла <b>1760м</b>, перепад <b>501м</b>, трос <b>2396м</b>, ухил 21.4%.<br>
+        <span style="color:#ffcc00">╪ опора 47м</span> на заданій точці ділить переліт на 1437 + 906м.
+      </div>
+    </div>
+    <div id="pendelbahn-list"></div>
   </div>
 
   <!-- TAB 1: TRAILS -->
@@ -362,7 +376,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
         <b>147 по ділянці 0049</b> (2859 га), на реальному рельєфі <b>SRTM ~30м</b> (тайл N48E024).
         Перепад до <b>616м</b>, довжина до <b>3.5км</b>.<br>
         Лінії пускаються і крізь <span style="color:#7fff7f">галявини</span> (відкритий терен — добре для трас). Ширина <b>40м</b>.<br>
-        <b style="color:#ff2bd6">20 підйомників</b> + <b style="color:#ff2bd6">пендельбан Заросляк→Мала Говерла</b> (Чорногора, 1259→1760м). ▲ верхні + ▼ нижні станції. <b>12 станцій на галявинах</b> (🟢). L3 збігається з наявним 6CLD.<br>
+        <b style="color:#ff2bd6">20 підйомників</b>: ▲ верхні + ▼ нижні станції. <b>12 станцій на галявинах</b> (🟢). L3 збігається з наявним 6CLD. <i>Пендельбан Заросляк→Мала Говерла — в окремій вкладці 🚡.</i><br>
         <span style="color:#ffcc00">━ межа 0049</span> · <span style="color:#ff9900">─ ─ парцель 0048</span> · <span style="color:#7fff7f">▩ галявини</span> · <span style="color:#ff2bd6">━ підйомник</span>.
       </div>
     </div>
@@ -900,6 +914,7 @@ function hideFallLineTab(){
 const parcelVariants={};
 let parcelBoundary={p0048:null,p0049:null,clearings:null,lifts:null};
 let parcelShowElev=false;
+let pendelbahnLayer=null;
 
 function initParcelTab(){
   fetch('fall_line_proposals.json?v='+Date.now()).then(r=>r.json()).then(allData=>{
@@ -940,6 +955,7 @@ function initParcelTab(){
       window.__lifts=allData._lifts;
       parcelBoundary.lifts=L.layerGroup();
       allData._lifts.forEach((lf,i)=>{
+        if(lf.parcel==='Чорногора'){ buildPendelbahn(lf,i); return; }
         const cable=L.polyline([lf.bottom,lf.top],{color:'#ff2bd6',weight:3,opacity:0.92,dashArray:'2,6'});
         cable.bindPopup('<b style="color:#ff2bd6">'+lf.name+'</b>'+(lf.type?'<br><i style="color:#bbb">'+lf.type+'</i>':'')+'<br>'+lf.bot_elev+'→'+lf.top_elev+'м (Δ '+lf.vertical+'м)<br>трос '+lf.cable_len+'м · ухил '+lf.grade+'%'+(lf.runs_served?'<br>обслуговує <b>'+lf.runs_served+'</b> трас':'')+(lf.n_towers?'<br>опор: <b>'+lf.n_towers+'</b> · макс. проліт '+lf.max_span+'м':'')+(lf.note?'<br><i style="color:#9f9">'+lf.note+'</i>':'')+'<br><button onclick="showLiftProfile('+i+')" style="margin-top:5px;font-size:11px;font-weight:600;color:#ff2bd6;background:rgba(255,43,214,0.14);border:1px solid rgba(255,43,214,0.4);border-radius:5px;padding:3px 9px;cursor:pointer">📈 превю профілю</button>');
         cable.addTo(parcelBoundary.lifts);
@@ -1072,6 +1088,38 @@ function hideParcelTab(){
 }
 
 function hideYaremceSafe(){ try{hideYaremcheTab()}catch(e){} }
+
+function buildPendelbahn(lf,i){
+  pendelbahnLayer=L.layerGroup();
+  L.polyline([lf.bottom,lf.top],{color:'#ff2bd6',weight:4,opacity:0.95}).bindPopup('<b style="color:#ff2bd6">'+lf.name+'</b><br>'+lf.bot_elev+'→'+lf.top_elev+'м (Δ'+lf.vertical+'м)<br>трос '+lf.cable_len+'м · ухил '+lf.grade+'%').addTo(pendelbahnLayer);
+  (lf.towers||[]).forEach((T,ti)=>{
+    const tIcon=L.divIcon({className:'',html:'<div style="color:#ffcc00;font-size:14px;line-height:10px;text-shadow:0 0 3px #000,0 0 3px #000">╪</div>',iconSize:[12,12],iconAnchor:[6,6]});
+    L.marker([T.lat,T.lng],{icon:tIcon}).bindPopup('<b style="color:#ffcc00">Опора T'+(ti+1)+'</b><br>висота <b>'+T.height+'м</b><br>земля '+T.ground+'м · трос '+T.cable_h+'м').addTo(pendelbahnLayer);
+  });
+  const topIcon=L.divIcon({className:'',html:'<div style="color:#ff2bd6;font-size:20px;line-height:14px;text-shadow:0 0 3px #000,0 0 3px #000,0 0 3px #000">▲</div>',iconSize:[20,16],iconAnchor:[10,8]});
+  const botIcon=L.divIcon({className:'',html:'<div style="color:#00e5ff;font-size:20px;line-height:14px;text-shadow:0 0 3px #000,0 0 3px #000,0 0 3px #000">▼</div>',iconSize:[20,16],iconAnchor:[10,8]});
+  L.marker(lf.top,{icon:topIcon}).bindPopup('<b style="color:#ff2bd6">Мала Говерла</b><br>'+lf.top_elev+'м').addTo(pendelbahnLayer);
+  L.marker(lf.bottom,{icon:botIcon}).bindPopup('<b style="color:#00e5ff">Заросляк</b><br>'+lf.bot_elev+'м').addTo(pendelbahnLayer);
+  const pl=document.getElementById('pendelbahn-list');
+  if(pl){
+    pl.innerHTML='';
+    const c=document.createElement('div');
+    c.style.cssText='background:rgba(255,43,214,0.06);border-left:3px solid #ff2bd6;padding:8px 10px;margin:4px 0;border-radius:0 6px 6px 0';
+    c.innerHTML='<div style="font-size:11px;font-weight:700;color:#ff2bd6">'+lf.name+'</div>'+
+      '<div style="font-size:10px;color:#ccc;line-height:1.5;margin-top:2px">'+lf.bot_elev+'→'+lf.top_elev+'м (Δ'+lf.vertical+'м) · '+lf.cable_len+'м · ухил '+lf.grade+'%'+(lf.n_towers?' · опор '+lf.n_towers+' (макс. проліт '+lf.max_span+'м)':'')+'</div>'+
+      '<div style="margin-top:5px;display:flex;gap:6px">'+
+      '<button class="lf-prev" style="font-size:10px;font-weight:600;color:#ff2bd6;background:rgba(255,43,214,0.14);border:1px solid rgba(255,43,214,0.4);border-radius:5px;padding:4px 9px;cursor:pointer">📈 превю профілю</button>'+
+      '<button class="lf-zoom" style="font-size:10px;font-weight:600;color:#6af;background:rgba(100,170,255,0.12);border:1px solid rgba(100,170,255,0.35);border-radius:5px;padding:4px 9px;cursor:pointer">🗺 на карті</button>'+
+      '</div>';
+    pl.appendChild(c);
+    c.querySelector('.lf-prev').onclick=()=>showLiftProfile(i);
+    c.querySelector('.lf-zoom').onclick=()=>map.fitBounds(L.latLngBounds([lf.bottom,lf.top]),{padding:[70,70]});
+  }
+}
+function showPendelbahnTab(){
+  if(pendelbahnLayer){map.addLayer(pendelbahnLayer);const lf=(window.__lifts||[]).find(x=>x.parcel==='Чорногора');if(lf)map.fitBounds(L.latLngBounds([lf.bottom,lf.top]),{padding:[70,70]});}
+}
+function hidePendelbahnTab(){ if(pendelbahnLayer)map.removeLayer(pendelbahnLayer); }
 
 function showParcelProfile(data){
   const segs=data.segments||[];
@@ -1387,10 +1435,14 @@ function setupTabs(){
       hideFallLineTab();
       hideYaremcheTab();
       hideParcelTab();
+      hidePendelbahnTab();
       trailData.forEach(t=>{if(trailLayerGroups[t.name])map.removeLayer(trailLayerGroups[t.name])});
       Object.keys(slopeCats).forEach(k=>{map.removeLayer(slopeSegmentLayers[k]);slopeCatVisible[k]=false});
 
-      if(btn.dataset.tab==='yaremche'){
+      if(btn.dataset.tab==='pendelbahn'){
+        tab2Active=false;
+        showPendelbahnTab();
+      } else if(btn.dataset.tab==='yaremche'){
         tab2Active=false;
         showYaremcheTab();
       } else if(btn.dataset.tab==='parcel'){
