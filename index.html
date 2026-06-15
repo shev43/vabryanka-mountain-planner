@@ -946,8 +946,11 @@ function initParcelTab(){
         '</div>'+
         '<div style="margin:3px 0;border-radius:2px;overflow:hidden;display:flex;height:8px">'+
         (data.segments||[]).map(s=>'<span style="display:inline-block;flex:1;height:8px;background:'+slopeColor(s.slope)+'"></span>').join('')+
-        '</div></div>';
+        '</div>'+
+        '<button class="pp-prev" style="margin-top:4px;font-size:10px;font-weight:600;color:#ffcc00;background:rgba(255,204,0,0.12);border:1px solid rgba(255,204,0,0.35);border-radius:5px;padding:3px 8px;cursor:pointer">📈 превю профілю</button>'+
+        '</div>';
       listEl.appendChild(card);
+      card.querySelector('.pp-prev').onclick=(e)=>{e.stopPropagation();showParcelProfile(data);};
 
       const layers={visible:true};
       layers.corridor=L.polygon(data.polygon,{color:color,fillColor:color,fillOpacity:0.12,weight:2,dashArray:'6,4'});
@@ -1015,6 +1018,67 @@ function hideParcelTab(){
 }
 
 function hideYaremceSafe(){ try{hideYaremcheTab()}catch(e){} }
+
+function showParcelProfile(data){
+  const segs=data.segments||[];
+  if(!segs.length) return;
+  const md=(a,b)=>{const la=(a[0]+b[0])/2*Math.PI/180;const dy=(b[0]-a[0])*111320;const dx=(b[1]-a[1])*111320*Math.cos(la);return Math.hypot(dx,dy);};
+  let dist=[0],cum=0;
+  segs.forEach(s=>{cum+=md(s.from,s.to);dist.push(cum);});
+  const total=cum||data.length;
+  let elev=segs.map(s=>s.elev_from); elev.push(segs[segs.length-1].elev_to);
+  const eMin=Math.min.apply(null,elev),eMax=Math.max.apply(null,elev);
+  const W=460,H=230,pl=46,pr=14,pt=16,pb=34,iw=W-pl-pr,ih=H-pt-pb;
+  const x=d=>pl+iw*(d/(total||1));
+  const y=e=>pt+ih*(1-(e-eMin)/Math.max(1,eMax-eMin));
+  let svg='';
+  // horizontal gridlines (elevation)
+  for(let k=0;k<=4;k++){
+    const e=eMin+(eMax-eMin)*k/4, yy=y(e);
+    svg+='<line x1="'+pl+'" y1="'+yy+'" x2="'+(W-pr)+'" y2="'+yy+'" stroke="#333" stroke-width="0.5"/>';
+    svg+='<text x="'+(pl-5)+'" y="'+(yy+3)+'" fill="#888" font-size="9" text-anchor="end">'+Math.round(e)+'</text>';
+  }
+  // filled slope-colored columns + top line
+  for(let i=0;i<segs.length;i++){
+    const x1=x(dist[i]),x2=x(dist[i+1]),y1=y(elev[i]),y2=y(elev[i+1]),yb=y(eMin);
+    svg+='<polygon points="'+x1+','+yb+' '+x1+','+y1+' '+x2+','+y2+' '+x2+','+yb+'" fill="'+slopeColor(segs[i].slope)+'" opacity="0.9"/>';
+  }
+  svg+='<polyline points="'+segs.map((s,i)=>x(dist[i])+','+y(elev[i])).join(' ')+' '+x(total)+','+y(elev[elev.length-1])+'" fill="none" stroke="#fff" stroke-width="1.3" opacity="0.85"/>';
+  // x-axis labels (distance)
+  for(let k=0;k<=4;k++){
+    const dd=total*k/4, xx=x(dd);
+    svg+='<line x1="'+xx+'" y1="'+(pt+ih)+'" x2="'+xx+'" y2="'+(pt+ih+4)+'" stroke="#666" stroke-width="0.6"/>';
+    svg+='<text x="'+xx+'" y="'+(pt+ih+16)+'" fill="#888" font-size="9" text-anchor="middle">'+Math.round(dd)+'м</text>';
+  }
+  const ov=document.createElement('div');
+  ov.id='pp-profile-overlay';
+  ov.style.cssText='position:fixed;inset:0;z-index:3000;background:rgba(0,0,0,0.6);display:flex;align-items:center;justify-content:center';
+  ov.innerHTML='<div style="background:#161826;border:1px solid #333;border-radius:12px;padding:16px;max-width:94vw;box-shadow:0 8px 40px rgba(0,0,0,0.7)">'+
+    '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">'+
+      '<div style="font-size:14px;font-weight:700;color:#ffcc00">'+data.name+' — профіль</div>'+
+      '<div id="pp-close" style="cursor:pointer;color:#888;font-size:20px;line-height:1;padding:0 4px">×</div>'+
+    '</div>'+
+    '<div style="font-size:11px;color:#ccc;margin-bottom:8px">'+
+      '<b>'+data.length+'м</b> · перепад <b>'+data.drop+'м</b> ('+data.top+'→'+data.bot+'м) · ухил сер. <b>'+data.avg_slope+'%</b> · макс <b>'+data.max_slope+'%</b>'+
+    '</div>'+
+    '<svg width="'+W+'" height="'+H+'" style="display:block;background:#0f111c;border-radius:6px">'+svg+'</svg>'+
+    '<div class="slope-legend" style="display:flex;margin-top:8px">'+
+      '<span>0%</span><div class="bar" style="background:#22cc22"></div><span>15</span>'+
+      '<div class="bar" style="background:#0066ff"></div><span>25</span>'+
+      '<div class="bar" style="background:#cc0000"></div><span>40</span>'+
+      '<div class="bar" style="background:#222"></div><span>%</span>'+
+    '</div>'+
+    '<button id="pp-zoom" style="margin-top:8px;font-size:11px;font-weight:600;color:#6af;background:rgba(100,170,255,0.12);border:1px solid rgba(100,170,255,0.35);border-radius:6px;padding:5px 12px;cursor:pointer">🗺 показати на карті</button>'+
+  '</div>';
+  document.body.appendChild(ov);
+  const close=()=>{ov.remove();};
+  ov.onclick=(e)=>{if(e.target===ov)close();};
+  ov.querySelector('#pp-close').onclick=close;
+  ov.querySelector('#pp-zoom').onclick=()=>{
+    close();
+    const ll=data.centerline; if(ll&&ll.length){map.fitBounds(L.latLngBounds(ll),{padding:[80,80]});}
+  };
+}
 
 // ========================
 // TAB 5: YAREMCHE
