@@ -371,6 +371,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
       <label><input type="checkbox" id="tgl-parcel-0049" checked> Межа 0049</label>
       <label><input type="checkbox" id="tgl-parcel-clearings" checked> Галявини</label>
       <label><input type="checkbox" id="tgl-parcel-lifts" checked> Підйомники</label>
+      <label><input type="checkbox" id="tgl-parcel-elev"> Відмітки висоти</label>
     </div>
     <div id="parcel-variants-list"></div>
     <div class="slope-legend" style="display:flex;margin-top:6px">
@@ -895,6 +896,7 @@ function hideFallLineTab(){
 // ========================
 const parcelVariants={};
 let parcelBoundary={p0048:null,p0049:null,clearings:null,lifts:null};
+let parcelShowElev=false;
 
 function initParcelTab(){
   fetch('fall_line_proposals.json?v='+Date.now()).then(r=>r.json()).then(allData=>{
@@ -1010,12 +1012,19 @@ function initParcelTab(){
         layers.visible=this.checked;
         card.style.opacity=this.checked?'1':'0.4';
         if(this.checked){
-          map.addLayer(layers.corridor);map.addLayer(layers.segments);map.addLayer(layers.markers);
+          map.addLayer(layers.corridor);map.addLayer(layers.segments);if(parcelShowElev)map.addLayer(layers.markers);
         } else {
           map.removeLayer(layers.corridor);map.removeLayer(layers.segments);map.removeLayer(layers.markers);map.removeLayer(layers.center);
         }
       };
     });
+
+    document.getElementById('tgl-parcel-elev').onchange=function(){
+      parcelShowElev=this.checked;
+      Object.values(parcelVariants).forEach(l=>{
+        if(l.visible){ (parcelShowElev?map.addLayer:map.removeLayer).call(map,l.markers); }
+      });
+    };
   });
 }
 
@@ -1028,7 +1037,7 @@ function showParcelTab(){
   if(parcelBoundary.clearings && document.getElementById('tgl-parcel-clearings').checked) map.addLayer(parcelBoundary.clearings);
   if(parcelBoundary.lifts && document.getElementById('tgl-parcel-lifts').checked) map.addLayer(parcelBoundary.lifts);
   Object.values(parcelVariants).forEach(l=>{
-    if(l.visible){map.addLayer(l.corridor);map.addLayer(l.segments);map.addLayer(l.markers)}
+    if(l.visible){map.addLayer(l.corridor);map.addLayer(l.segments);if(parcelShowElev)map.addLayer(l.markers)}
   });
 }
 
