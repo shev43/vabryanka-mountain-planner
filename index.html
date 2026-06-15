@@ -158,6 +158,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 
   <div class="tabs">
     <button class="tab-btn active" data-tab="fallline">Fall Line</button>
+    <button class="tab-btn" data-tab="parcel">📐 Парцель</button>
     <button class="tab-btn" data-tab="trails">Траси</button>
     <button class="tab-btn" data-tab="slopes">Сегменти</button>
     <button class="tab-btn" data-tab="ideal">Ідеальна 120м</button>
@@ -351,6 +352,31 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
       <div class="bar" style="background:#222"></div><span>%</span>
     </div>
   </div>
+
+  <!-- TAB: PARCEL FALL LINE -->
+  <div class="tab-content" id="tab-parcel">
+    <div style="background:rgba(255,204,0,0.12);border:1px solid rgba(255,204,0,0.4);border-radius:8px;padding:10px;margin:8px 0">
+      <div style="font-size:13px;font-weight:700;color:#ffcc00;margin-bottom:6px">FALL LINE — у межах парцелю</div>
+      <div style="font-size:10px;color:#ccc;line-height:1.6">
+        Парцель <b>0048</b> (96.98 га, лісогосп.) — <span style="color:#ffcc00">золота межа</span>.
+        Пропозиції побудовані методом найкрутішого спуску по рельєфу, інтерпольованому з наявних даних (IDW).<br>
+        Лінії стартують біля верху й тримаються в межах ділянки. Ширина <b>40м</b>.<br>
+        <span style="color:#88aacc">─ ─ контур 0049</span> (2859 га) показано як контекст. Поза зоною даних рельєфу лінії не будуються.
+      </div>
+    </div>
+    <div class="layer-controls">
+      <label><input type="checkbox" id="tgl-parcel-0048" checked> Межа 0048</label>
+      <label><input type="checkbox" id="tgl-parcel-0049" checked> Контур 0049</label>
+    </div>
+    <div id="parcel-variants-list"></div>
+    <div class="slope-legend" style="display:flex;margin-top:6px">
+      <span>0%</span>
+      <div class="bar" style="background:#22cc22"></div><span>15</span>
+      <div class="bar" style="background:#0066ff"></div><span>25</span>
+      <div class="bar" style="background:#cc0000"></div><span>40</span>
+      <div class="bar" style="background:#222"></div><span>%</span>
+    </div>
+  </div>
 </div>
 
 <div class="info-box">
@@ -441,6 +467,7 @@ fetch('trail_variants.json').then(r=>r.json()).then(data=>{
   initTab2();
   initTab3();
   initTab4();
+  initParcelTab();
   initTabYaremche();
   initShlyah();
   setupTabs();
@@ -860,6 +887,124 @@ function hideFallLineTab(){
 }
 
 // ========================
+// TAB: PARCEL FALL LINE
+// ========================
+const parcelVariants={};
+let parcelBoundary={p0048:null,p0049:null};
+
+function initParcelTab(){
+  fetch('fall_line_proposals.json?v='+Date.now()).then(r=>r.json()).then(allData=>{
+    const listEl=document.getElementById('parcel-variants-list');
+
+    // Parcel boundaries
+    const pc=allData._parcels||{};
+    if(pc.p0048){
+      parcelBoundary.p0048=L.polygon(pc.p0048,{color:'#ffcc00',weight:3,opacity:0.95,fill:true,fillColor:'#ffcc00',fillOpacity:0.05})
+        .bindPopup('<b style="color:#ffcc00">Парцель 0048</b><br>96.98 га · лісогосп.');
+    }
+    if(pc.p0049){
+      parcelBoundary.p0049=L.layerGroup();
+      pc.p0049.forEach(ring=>{
+        L.polyline(ring.concat([ring[0]]),{color:'#88aacc',weight:1.3,opacity:0.55,dashArray:'6,5'}).addTo(parcelBoundary.p0049);
+      });
+    }
+    document.getElementById('tgl-parcel-0048').onchange=function(){
+      if(!parcelBoundary.p0048)return;
+      (this.checked?map.addLayer:map.removeLayer).call(map,parcelBoundary.p0048);
+    };
+    document.getElementById('tgl-parcel-0049').onchange=function(){
+      if(!parcelBoundary.p0049)return;
+      (this.checked?map.addLayer:map.removeLayer).call(map,parcelBoundary.p0049);
+    };
+
+    const keys=Object.keys(allData).filter(k=>!k.startsWith('_'));
+    keys.forEach(key=>{
+      const data=allData[key];
+      const color='#ffcc00';
+      const sp=data.slope_profile||[];
+      const g=sp.filter(s=>s<15).length, b=sp.filter(s=>s>=15&&s<25).length;
+      const r=sp.filter(s=>s>=25&&s<40).length, bl=sp.filter(s=>s>=40).length;
+
+      const card=document.createElement('div');
+      card.style.cssText='background:rgba(255,255,255,0.04);border-left:3px solid '+color+';padding:8px 10px;margin:5px 0;border-radius:0 6px 6px 0;display:flex;align-items:flex-start;gap:8px';
+      card.innerHTML='<input type="checkbox" id="tgl-pp-'+key+'" checked style="accent-color:'+color+';margin-top:2px;flex-shrink:0;cursor:pointer">'+
+        '<div style="flex:1;cursor:pointer" class="pp-card-info">'+
+        '<div style="font-size:11px;font-weight:700;color:'+color+'">'+data.name+'</div>'+
+        '<div style="font-size:10px;color:#ccc;line-height:1.5;margin-top:2px">'+
+        '<b>'+data.length+'м</b> | '+data.top+'→'+data.bot+'м ('+data.drop+'м) | ухил <b>'+data.avg_slope+'%</b> (макс '+data.max_slope+'%)<br>'+
+        '<span style="color:#22aa22">G'+g+'</span> <span style="color:#4499ff">B'+b+'</span> <span style="color:#cc0000">R'+r+'</span>'+(bl?' <span style="color:#666">K'+bl+'</span>':'')+
+        '</div>'+
+        '<div style="margin:3px 0;border-radius:2px;overflow:hidden;display:flex;height:8px">'+
+        (data.segments||[]).map(s=>'<span style="display:inline-block;flex:1;height:8px;background:'+slopeColor(s.slope)+'"></span>').join('')+
+        '</div></div>';
+      listEl.appendChild(card);
+
+      const layers={visible:true};
+      layers.corridor=L.polygon(data.polygon,{color:color,fillColor:color,fillOpacity:0.12,weight:2,dashArray:'6,4'});
+      layers.corridor.bindPopup('<b style="color:'+color+'">'+data.name+'</b><br>'+data.length+'м | '+data.avg_slope+'% сер.');
+      layers.center=L.polyline(data.centerline,{color:color,weight:4,opacity:0.95});
+      layers.center.bindPopup('<b style="color:'+color+'">'+data.name+'</b><br>'+data.length+'м | '+data.drop+'м | '+data.avg_slope+'%');
+      layers.segments=L.layerGroup();
+      (data.segments||[]).forEach((seg,i)=>{
+        const c=slopeColor(seg.slope);
+        const line=L.polyline([seg.from,seg.to],{color:c,weight:6,opacity:0.85});
+        line.bindPopup('<b style="color:'+c+'">'+data.name+' сегм.'+(i+1)+'</b><br>Ухил: <b>'+seg.slope+'%</b><br>'+seg.elev_from+'→'+seg.elev_to+'м');
+        line.on('mouseover',function(){this.setStyle({weight:9,opacity:1})});
+        line.on('mouseout',function(){this.setStyle({weight:6,opacity:0.85})});
+        layers.segments.addLayer(line);
+      });
+      layers.markers=L.layerGroup();
+      const step=Math.max(1,Math.floor((data.segments||[]).length/5));
+      for(let i=0;i<=(data.segments||[]).length;i+=step){
+        const seg=i<data.segments.length?data.segments[i]:data.segments[data.segments.length-1];
+        const coord=i<data.segments.length?seg.from:seg.to;
+        const elev=i<data.segments.length?seg.elev_from:seg.elev_to;
+        const m=L.circleMarker(coord,{radius:3,color:color,fillColor:'#fff',fillOpacity:1,weight:2});
+        m.bindTooltip(elev+'м',{permanent:true,direction:'right',offset:[5,0]});
+        layers.markers.addLayer(m);
+      }
+      parcelVariants[key]=layers;
+
+      card.querySelector('.pp-card-info').onclick=()=>{
+        const bounds=layers.corridor.getBounds();
+        if(bounds.isValid()) map.fitBounds(bounds,{padding:[80,80]});
+      };
+      const cb=card.querySelector('input[type="checkbox"]');
+      cb.onchange=function(){
+        layers.visible=this.checked;
+        card.style.opacity=this.checked?'1':'0.4';
+        if(this.checked){
+          map.addLayer(layers.corridor);map.addLayer(layers.segments);map.addLayer(layers.markers);
+        } else {
+          map.removeLayer(layers.corridor);map.removeLayer(layers.segments);map.removeLayer(layers.markers);map.removeLayer(layers.center);
+        }
+      };
+    });
+  });
+}
+
+function showParcelTab(){
+  trailData.forEach(t=>{if(trailLayerGroups[t.name])map.removeLayer(trailLayerGroups[t.name])});
+  Object.keys(slopeCats).forEach(k=>{map.removeLayer(slopeSegmentLayers[k]);slopeCatVisible[k]=false});
+  hideIdealTab(); hideFallLineTab(); hideYaremceSafe();
+  if(parcelBoundary.p0048 && document.getElementById('tgl-parcel-0048').checked) map.addLayer(parcelBoundary.p0048);
+  if(parcelBoundary.p0049 && document.getElementById('tgl-parcel-0049').checked) map.addLayer(parcelBoundary.p0049);
+  Object.values(parcelVariants).forEach(l=>{
+    if(l.visible){map.addLayer(l.corridor);map.addLayer(l.segments);map.addLayer(l.markers)}
+  });
+}
+
+function hideParcelTab(){
+  if(parcelBoundary.p0048) map.removeLayer(parcelBoundary.p0048);
+  if(parcelBoundary.p0049) map.removeLayer(parcelBoundary.p0049);
+  Object.values(parcelVariants).forEach(l=>{
+    map.removeLayer(l.corridor);map.removeLayer(l.center);map.removeLayer(l.segments);map.removeLayer(l.markers);
+  });
+}
+
+function hideYaremceSafe(){ try{hideYaremcheTab()}catch(e){} }
+
+// ========================
 // TAB 5: YAREMCHE
 // ========================
 const yrVariants={};
@@ -1057,12 +1202,17 @@ function setupTabs(){
       hideIdealTab();
       hideFallLineTab();
       hideYaremcheTab();
+      hideParcelTab();
       trailData.forEach(t=>{if(trailLayerGroups[t.name])map.removeLayer(trailLayerGroups[t.name])});
       Object.keys(slopeCats).forEach(k=>{map.removeLayer(slopeSegmentLayers[k]);slopeCatVisible[k]=false});
 
       if(btn.dataset.tab==='yaremche'){
         tab2Active=false;
         showYaremcheTab();
+      } else if(btn.dataset.tab==='parcel'){
+        tab2Active=false;
+        showParcelTab();
+        if(parcelBoundary.p0048){const b=parcelBoundary.p0048.getBounds();if(b.isValid())map.fitBounds(b,{padding:[60,60]});}
       } else if(btn.dataset.tab==='fallline'){
         tab2Active=false;
         showFallLineTab();
