@@ -362,13 +362,15 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
         <b>147 по ділянці 0049</b> (2859 га), на реальному рельєфі <b>SRTM ~30м</b> (тайл N48E024).
         Перепад до <b>616м</b>, довжина до <b>3.5км</b>.<br>
         Лінії пускаються і крізь <span style="color:#7fff7f">галявини</span> (відкритий терен — добре для трас). Ширина <b>40м</b>.<br>
-        <span style="color:#ffcc00">━ межа 0049</span> · <span style="color:#ff9900">─ ─ парцель 0048</span> · <span style="color:#7fff7f">▩ галявини</span>.
+        <b style="color:#ff2bd6">9 підйомників</b>: ▲ верхні станції (на гребенях, звідки розходяться траси) + ▼ нижні (в долинах). L1 збігається з наявним 6CLD.<br>
+        <span style="color:#ffcc00">━ межа 0049</span> · <span style="color:#ff9900">─ ─ парцель 0048</span> · <span style="color:#7fff7f">▩ галявини</span> · <span style="color:#ff2bd6">━ підйомник</span>.
       </div>
     </div>
     <div class="layer-controls">
       <label><input type="checkbox" id="tgl-parcel-0048" checked> Парцель 0048</label>
       <label><input type="checkbox" id="tgl-parcel-0049" checked> Межа 0049</label>
       <label><input type="checkbox" id="tgl-parcel-clearings" checked> Галявини</label>
+      <label><input type="checkbox" id="tgl-parcel-lifts" checked> Підйомники</label>
     </div>
     <div id="parcel-variants-list"></div>
     <div class="slope-legend" style="display:flex;margin-top:6px">
@@ -892,7 +894,7 @@ function hideFallLineTab(){
 // TAB: PARCEL FALL LINE
 // ========================
 const parcelVariants={};
-let parcelBoundary={p0048:null,p0049:null,clearings:null};
+let parcelBoundary={p0048:null,p0049:null,clearings:null,lifts:null};
 
 function initParcelTab(){
   fetch('fall_line_proposals.json?v='+Date.now()).then(r=>r.json()).then(allData=>{
@@ -926,6 +928,24 @@ function initParcelTab(){
     document.getElementById('tgl-parcel-clearings').onchange=function(){
       if(!parcelBoundary.clearings)return;
       (this.checked?map.addLayer:map.removeLayer).call(map,parcelBoundary.clearings);
+    };
+
+    // Lifts: top (▲) + bottom (▼) stations connected by cable
+    if(pc && allData._lifts && allData._lifts.length){
+      parcelBoundary.lifts=L.layerGroup();
+      allData._lifts.forEach((lf,i)=>{
+        const cable=L.polyline([lf.bottom,lf.top],{color:'#ff2bd6',weight:3,opacity:0.92,dashArray:'2,6'});
+        cable.bindPopup('<b style="color:#ff2bd6">'+lf.name+'</b><br>'+lf.bot_elev+'→'+lf.top_elev+'м (Δ '+lf.vertical+'м)<br>трос '+lf.cable_len+'м · ухил '+lf.grade+'%<br>обслуговує <b>'+lf.runs_served+'</b> трас'+(lf.note?'<br><i style="color:#9f9">'+lf.note+'</i>':''));
+        cable.addTo(parcelBoundary.lifts);
+        const topIcon=L.divIcon({className:'',html:'<div style="color:#ff2bd6;font-size:20px;line-height:14px;text-shadow:0 0 3px #000,0 0 3px #000,0 0 3px #000">▲</div>',iconSize:[20,16],iconAnchor:[10,8]});
+        const botIcon=L.divIcon({className:'',html:'<div style="color:#00e5ff;font-size:20px;line-height:14px;text-shadow:0 0 3px #000,0 0 3px #000,0 0 3px #000">▼</div>',iconSize:[20,16],iconAnchor:[10,8]});
+        L.marker(lf.top,{icon:topIcon}).bindPopup('<b style="color:#ff2bd6">Верхня станція '+lf.name+'</b><br>'+lf.top_elev+'м · '+lf.runs_served+' трас').addTo(parcelBoundary.lifts);
+        L.marker(lf.bottom,{icon:botIcon}).bindPopup('<b style="color:#00e5ff">Нижня станція '+lf.name+'</b><br>'+lf.bot_elev+'м').addTo(parcelBoundary.lifts);
+      });
+    }
+    document.getElementById('tgl-parcel-lifts').onchange=function(){
+      if(!parcelBoundary.lifts)return;
+      (this.checked?map.addLayer:map.removeLayer).call(map,parcelBoundary.lifts);
     };
 
     const keys=Object.keys(allData).filter(k=>!k.startsWith('_'));
@@ -1004,6 +1024,7 @@ function showParcelTab(){
   if(parcelBoundary.p0048 && document.getElementById('tgl-parcel-0048').checked) map.addLayer(parcelBoundary.p0048);
   if(parcelBoundary.p0049 && document.getElementById('tgl-parcel-0049').checked) map.addLayer(parcelBoundary.p0049);
   if(parcelBoundary.clearings && document.getElementById('tgl-parcel-clearings').checked) map.addLayer(parcelBoundary.clearings);
+  if(parcelBoundary.lifts && document.getElementById('tgl-parcel-lifts').checked) map.addLayer(parcelBoundary.lifts);
   Object.values(parcelVariants).forEach(l=>{
     if(l.visible){map.addLayer(l.corridor);map.addLayer(l.segments);map.addLayer(l.markers)}
   });
@@ -1013,6 +1034,7 @@ function hideParcelTab(){
   if(parcelBoundary.p0048) map.removeLayer(parcelBoundary.p0048);
   if(parcelBoundary.p0049) map.removeLayer(parcelBoundary.p0049);
   if(parcelBoundary.clearings) map.removeLayer(parcelBoundary.clearings);
+  if(parcelBoundary.lifts) map.removeLayer(parcelBoundary.lifts);
   Object.values(parcelVariants).forEach(l=>{
     map.removeLayer(l.corridor);map.removeLayer(l.center);map.removeLayer(l.segments);map.removeLayer(l.markers);
   });
