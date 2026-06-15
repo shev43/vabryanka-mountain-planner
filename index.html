@@ -938,8 +938,12 @@ function initParcelTab(){
       parcelBoundary.lifts=L.layerGroup();
       allData._lifts.forEach((lf,i)=>{
         const cable=L.polyline([lf.bottom,lf.top],{color:'#ff2bd6',weight:3,opacity:0.92,dashArray:'2,6'});
-        cable.bindPopup('<b style="color:#ff2bd6">'+lf.name+'</b><br>'+lf.bot_elev+'→'+lf.top_elev+'м (Δ '+lf.vertical+'м)<br>трос '+lf.cable_len+'м · ухил '+lf.grade+'%<br>обслуговує <b>'+lf.runs_served+'</b> трас'+(lf.note?'<br><i style="color:#9f9">'+lf.note+'</i>':'')+'<br><button onclick="showLiftProfile('+i+')" style="margin-top:5px;font-size:11px;font-weight:600;color:#ff2bd6;background:rgba(255,43,214,0.14);border:1px solid rgba(255,43,214,0.4);border-radius:5px;padding:3px 9px;cursor:pointer">📈 превю профілю</button>');
+        cable.bindPopup('<b style="color:#ff2bd6">'+lf.name+'</b>'+(lf.type?'<br><i style="color:#bbb">'+lf.type+'</i>':'')+'<br>'+lf.bot_elev+'→'+lf.top_elev+'м (Δ '+lf.vertical+'м)<br>трос '+lf.cable_len+'м · ухил '+lf.grade+'%'+(lf.runs_served?'<br>обслуговує <b>'+lf.runs_served+'</b> трас':'')+(lf.n_towers?'<br>опор: <b>'+lf.n_towers+'</b> · макс. проліт '+lf.max_span+'м':'')+(lf.note?'<br><i style="color:#9f9">'+lf.note+'</i>':'')+'<br><button onclick="showLiftProfile('+i+')" style="margin-top:5px;font-size:11px;font-weight:600;color:#ff2bd6;background:rgba(255,43,214,0.14);border:1px solid rgba(255,43,214,0.4);border-radius:5px;padding:3px 9px;cursor:pointer">📈 превю профілю</button>');
         cable.addTo(parcelBoundary.lifts);
+        (lf.towers||[]).forEach((T,ti)=>{
+          const tIcon=L.divIcon({className:'',html:'<div style="color:#ffcc00;font-size:13px;line-height:10px;text-shadow:0 0 3px #000,0 0 3px #000">╪</div>',iconSize:[12,12],iconAnchor:[6,6]});
+          L.marker([T.lat,T.lng],{icon:tIcon}).bindPopup('<b style="color:#ffcc00">'+lf.name+' — опора T'+(ti+1)+'</b><br>висота <b>'+T.height+'м</b><br>земля '+T.ground+'м · трос '+T.cable_h+'м').addTo(parcelBoundary.lifts);
+        });
         const ring=on=>on?'border-radius:50%;box-shadow:0 0 0 3px #7fff7f,0 0 5px #000;background:rgba(127,255,127,0.25);':'';
         const topIcon=L.divIcon({className:'',html:'<div style="'+ring(lf.top_in_clearing)+'color:#ff2bd6;font-size:20px;line-height:14px;text-shadow:0 0 3px #000,0 0 3px #000,0 0 3px #000">▲</div>',iconSize:[20,16],iconAnchor:[10,8]});
         const botIcon=L.divIcon({className:'',html:'<div style="'+ring(lf.bot_in_clearing)+'color:#00e5ff;font-size:20px;line-height:14px;text-shadow:0 0 3px #000,0 0 3px #000,0 0 3px #000">▼</div>',iconSize:[20,16],iconAnchor:[10,8]});
@@ -1117,7 +1121,11 @@ function showParcelProfile(data){
 function showLiftProfile(idx){
   const lf=(window.__lifts||[])[idx]; if(!lf||!lf.profile) return;
   const terr=lf.profile, N=terr.length-1;
-  const cable=terr.map((_,i)=>lf.bot_elev+(lf.top_elev-lf.bot_elev)*i/N);
+  let sup=[[0,lf.bot_elev]];
+  (lf.towers||[]).forEach(T=>sup.push([T.dist/lf.horizontal*N, T.cable_h]));
+  sup.push([N,lf.top_elev]);
+  const cableAt=i=>{for(let j=0;j<sup.length-1;j++){const x0=sup[j][0],y0=sup[j][1],x1=sup[j+1][0],y1=sup[j+1][1];if(i>=x0&&i<=x1)return y0+(y1-y0)*(i-x0)/Math.max(1e-9,(x1-x0));}return sup[sup.length-1][1];};
+  const cable=terr.map((_,i)=>cableAt(i));
   const eMin=Math.min(Math.min.apply(null,terr),lf.bot_elev);
   const eMax=Math.max(Math.max.apply(null,terr),lf.top_elev);
   const W=480,H=240,pl=46,pr=14,pt=16,pb=34,iw=W-pl-pr,ih=H-pt-pb;
@@ -1135,14 +1143,15 @@ function showLiftProfile(idx){
   svg+='<polyline points="'+tp+'" fill="none" stroke="#cdd3db" stroke-width="1"/>';
   // clearance band (cable above terrain) + towers
   for(let i=0;i<=N;i+=2){ svg+='<line x1="'+x(i)+'" y1="'+y(terr[i])+'" x2="'+x(i)+'" y2="'+y(cable[i])+'" stroke="#ff2bd6" stroke-width="0.6" opacity="0.4"/>'; }
-  // cable straight line + stations
-  svg+='<line x1="'+x(0)+'" y1="'+y(cable[0])+'" x2="'+x(N)+'" y2="'+y(cable[N])+'" stroke="#ff2bd6" stroke-width="2"/>';
+  // cable (piecewise through towers) + stations + towers
+  svg+='<polyline points="'+cable.map((c,i)=>x(i)+','+y(c)).join(' ')+'" fill="none" stroke="#ff2bd6" stroke-width="2"/>';
+  (lf.towers||[]).forEach(T=>{const xi=T.dist/lf.horizontal*N;svg+='<line x1="'+x(xi)+'" y1="'+y(T.ground)+'" x2="'+x(xi)+'" y2="'+y(T.cable_h)+'" stroke="#ffcc00" stroke-width="2.5"/><text x="'+x(xi)+'" y="'+(y(T.cable_h)-3)+'" fill="#ffcc00" font-size="8" text-anchor="middle">'+T.height+'м</text>';});
   svg+='<circle cx="'+x(0)+'" cy="'+y(cable[0])+'" r="4" fill="#00e5ff" stroke="#fff" stroke-width="1"/>';
   svg+='<circle cx="'+x(N)+'" cy="'+y(cable[N])+'" r="4" fill="#ff2bd6" stroke="#fff" stroke-width="1"/>';
   // max clearance marker
   let mi=0,mc=-1;for(let i=0;i<=N;i++){if(cable[i]-terr[i]>mc){mc=cable[i]-terr[i];mi=i;}}
-  svg+='<line x1="'+x(mi)+'" y1="'+y(terr[mi])+'" x2="'+x(mi)+'" y2="'+y(cable[mi])+'" stroke="#ffae00" stroke-width="1.5"/>';
-  svg+='<text x="'+x(mi)+'" y="'+(y(cable[mi])-4)+'" fill="#ffae00" font-size="9" text-anchor="middle">'+Math.round(mc)+'м</text>';
+  svg+='<line x1="'+x(mi)+'" y1="'+y(terr[mi])+'" x2="'+x(mi)+'" y2="'+y(cable[mi])+'" stroke="#66d9ff" stroke-width="1.5" stroke-dasharray="3,3"/>';
+  svg+='<text x="'+x(mi)+'" y="'+(y(cable[mi])-4)+'" fill="#66d9ff" font-size="9" text-anchor="middle">'+Math.round(mc)+'м над землею</text>';
   for(let k=0;k<=4;k++){const xx=x(N*k/4);svg+='<text x="'+xx+'" y="'+(pt+ih+16)+'" fill="#888" font-size="9" text-anchor="middle">'+Math.round(lf.horizontal*k/4)+'м</text>';}
   const ov=document.createElement('div');
   ov.style.cssText='position:fixed;inset:0;z-index:3000;background:rgba(0,0,0,0.6);display:flex;align-items:center;justify-content:center';
